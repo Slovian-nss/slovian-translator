@@ -27,7 +27,8 @@ app.get('/', (_req, res) => {
 
 // --- OpenAI client -----------------------------------------------------------
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const MODEL = process.env.OPENAI_MODEL || 'gpt-4o'; // np. gpt-4o-mini też OK
+// tańszy, stabilny domyślny model; można nadpisać przez ENV
+const MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 
 // --- Slovnik -----------------------------------------------------------------
 const slovnikPath = path.join(__dirname, 'slovnik.json');
@@ -38,9 +39,11 @@ let ENTRIES = [];
     const txt = await fs.readFile(slovnikPath, 'utf8');
     ENTRIES = JSON.parse(txt);
     console.log(`Loaded slovnik.json entries: ${ENTRIES.length}`);
+    rebuildIndex();
   } catch (e) {
     console.error('Cannot load slovnik.json:', e);
     ENTRIES = [];
+    rebuildIndex();
   }
 })();
 
@@ -53,7 +56,6 @@ function rebuildIndex() {
     if (key && !key.includes(' ')) SINGLE.set(key, e);
   }
 }
-rebuildIndex();
 
 const WORD_RE = /(\p{L}+|[\d]+|[\s]+|[^\w\s]+)/gu;
 function tokenize(s) {
@@ -74,6 +76,34 @@ function collectHits(text, maxHits = 600) {
     if (hits.length >= maxHits) break;
   }
   return hits;
+}
+
+// Offline fallback – proste tłumaczenie słownikowe, gdy brak środków lub błąd API
+function offlineTranslate(text) {
+  const toks = tokenize(text);
+  const out = [];
+  const notes = [];
+
+  for (const t of toks) {
+    if (/\p{L}/u.test(t)) {
+      const key = t.toLowerCase();
+      const e = SINGLE.get(key);
+      if (e && e.sl) {
+        out.push(e.sl);
+        notes.push({ src: t, dst: e.sl, note: 'dict' });
+      } else {
+        out.push(t);
+      }
+    } else {
+      out.push(t); // spacje, interpunkcja itp.
+    }
+  }
+
+  return {
+    translation: out.join(''),
+    coverage_note: `fallback: offline dictionary used (${notes.length} matches)`,
+    tokens: notes
+  };
 }
 
 // --- API: translate ----------------------------------------------------------
@@ -121,8 +151,8 @@ app.post('/api/translate', async (req, res) => {
 
     let data;
 
-    // 1) Najpierw spróbuj Chat Completions z JSON-em (stabilne w wielu wersjach)
     try {
+      // 1) Tanie i stabilne: Chat Completions z JSON
       const chat = await openai.chat.completions.create({
         model: MODEL,
         messages: [
@@ -134,34 +164,42 @@ app.post('/api/translate', async (req, res) => {
       });
       const content = chat.choices?.[0]?.message?.content ?? "{}";
       data = JSON.parse(content);
+
     } catch (e1) {
-      // 2) Fallback: Responses API (bez kontrowersyjnych parametrów), sami parse'ujemy
-      const resp = await openai.responses.create({
-        model: MODEL,
-        input: [
-          { role: "system", content: sys },
-          { role: "user", content: user }
-        ],
-        temperature: 0.2,
-        max_output_tokens: 800
-      });
+      // Jeśli to kwestia braku środków / limitu – zrób fallback lokalny
+      const code = e1?.status || e1?.code;
+      const isQuota =
+        code === 429 ||
+        e1?.error?.type === 'insufficient_quota' ||
+        /quota|billing|insufficient/i.test(e1?.message || '');
 
-      // różne ścieżki w zależności od wersji SDK
-      const content =
-        resp.output_text ||
-        (resp.output?.[0]?.content?.find?.(c => c.type === 'output_text')?.text) ||
-        (resp.output?.[0]?.content?.[0]?.text) ||
-        "";
+      if (isQuota) {
+        data = offlineTranslate(text);
+      } else {
+        // 2) Inne błędy – spróbuj Responses jako zapas (bez spornych parametrów)
+        const resp = await openai.responses.create({
+          model: MODEL,
+          input: [
+            { role: "system", content: sys },
+            { role: "user", content: user }
+          ],
+          temperature: 0.2,
+          max_output_tokens: 350
+        });
 
-      try {
-        data = JSON.parse(content);
-      } catch {
-        data = { translation: content, coverage_note: "fallback: not strict JSON" };
+        const content =
+          resp.output_text ||
+          (resp.output?.[0]?.content?.find?.(c => c.type === 'output_text')?.text) ||
+          (resp.output?.[0]?.content?.[0]?.text) ||
+          "";
+
+        try { data = JSON.parse(content); }
+        catch { data = { translation: content, coverage_note: "fallback: not strict JSON" }; }
       }
     }
 
-    // odesłanie wyniku
     res.json({ ok: true, model: MODEL, data });
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message || 'Internal error' });
