@@ -89,13 +89,13 @@ app.post('/api/translate', async (req, res) => {
     ].join('\n');
     const user = JSON.stringify({ text, dictionary_hits: mini });
 
-    const resp = await openai.responses.create({
-      model: MODEL,
-      input: [{ role: "system", content: sys }, { role: "user", content: user }],
-      response_format: { type: "json_schema", json_schema },
-      temperature: 0.2,
-      max_output_tokens: 800
-    });
+  const resp = await openai.responses.create({
+  model: MODEL,
+  input: [{ role: "system", content: sys }, { role: "user", content: user }],
+  text_format: { type: "json_schema", json_schema }, // ← NOWA nazwa parametru
+  temperature: 0.2,
+  max_output_tokens: 800
+  });
 
     const content = resp.output?.[0]?.content?.[0]?.text || resp.output_text || "";
     let data; try { data = JSON.parse(content); } catch { data = { translation: content }; }
