@@ -1,8 +1,15 @@
-import streamlit as st
+
+try:
+    import streamlit as st
+except ImportError:
+    raise ImportError("Streamlit nie jest zainstalowany. Użyj 'pip install streamlit'.")
 import json
 import os
 import re
-from groq import Groq
+try:
+    from groq import Groq
+except ImportError:
+    raise ImportError("Pakiet 'groq' nie jest zainstalowany. Użyj 'pip install groq'.")
 
 # ============================================================
 # 1. KONFIGURACJA I STYLIZACJA
@@ -19,9 +26,9 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # ============================================================
-# 2. KLUCZ API I NOWY MODEL (Llama 3.3)
+# 2. KLUCZ API I NOWY MODEL (openai/gpt-oss-120b)
 # ============================================================
-# Zaktualizowano model na llama-3.3-70b-specdec, który zastąpił wycofany model
+# Zaktualizowano model na openai/gpt-oss-120b, który zastąpił wycofany model
 GROQ_API_KEY = "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" 
 client = Groq(api_key=GROQ_API_KEY)
 
