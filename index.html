@@ -166,7 +166,7 @@ Zwróć TYLKO czyste tłumaczenie używając alfabetu łacińskiego + ě, ę, ǫ
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
-                    model: "llama-3.3-70b-versatile", // Zmieniono na stabilny model Groq
+                    model: "openai/gpt-oss-120b", // Zmieniono na stabilny model Groq
                     messages: [
                         { role: "system", content: systemPrompt },
                         { role: "user", content: input }
@@ -195,5 +195,6 @@ Zwróć TYLKO czyste tłumaczenie używając alfabetu łacińskiego + ě, ę, ǫ
 
 </body>
 </html>
+
 
 
