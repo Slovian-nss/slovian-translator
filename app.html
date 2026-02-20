@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Perkladačь slověnьskogo ęzyka</title>
+    <script src="https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm"></script>
+    <style>
+        body { background-color: #0e1117; color: #dcdcdc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; max-width: 800px; margin: auto; }
+        .container { background-color: #1a1a1a; padding: 20px; border-radius: 10px; border: 1px solid #333; }
+        input { width: 100%; padding: 12px; background: #000; border: 1px solid #444; color: white; border-radius: 5px; margin-bottom: 10px; }
+        button { background-color: #2e7d32; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; width: 100%; }
+        button:disabled { background-color: #555; }
+        #output { margin-top: 20px; padding: 15px; background-color: #050505; border-left: 5px solid #2e7d32; display: none; }
+        #status { color: #888; font-size: 0.8rem; margin-top: 10px; }
+        .source-box { font-size: 0.8rem; color: #777; margin-top: 10px; border-top: 1px dashed #444; padding-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Perkladačь slověnьskogo ęzyka</h2>
+    <p style="color: #888;">AI tłumaczy lokalnie na Twoim komputerze (bez limitów).</p>
+    
+    <input type="text" id="userInput" placeholder="Vupiši slovo abo rěčenьje...">
+    <button id="translateBtn" onclick="translate()">Perkladi</button>
+    
+    <div id="status">Inicjalizacja modelu... (może to zająć chwilę przy pierwszym razie)</div>
+    
+    <div id="output">
+        <strong style="color: #2e7d32;">Vynik perklada:</strong>
+        <p id="responseText"></p>
+        <div id="sources" class="source-box"></div>
+    </div>
+</div>
+
+<script>
+    let engine;
+    const modelId = "Llama-3-8B-Instruct-q4f16_1-MLC"; // Możesz zmienić na mniejszy model np. "Gemma-2b-it-q4f16_1-MLC" dla szybkości
+    let dictionary = [];
+
+    // 1. ŁADOWANIE SŁOWNIKA (Zastąp ścieżką do swojego pliku lub wklej treść)
+    async function loadDict() {
+        try {
+            const response = await fetch('osnova.json');
+            dictionary = await response.json();
+        } catch (e) {
+            console.error("Błąd ładowania osnova.json", e);
+        }
+    }
+
+    // 2. LOGIKA RAG (Lokalne dopasowanie kontekstu)
+    function getContext(text) {
+        const words = text.toLowerCase().replace(/[^\w\s]/g, '').split(' ');
+        let matches = dictionary.filter(entry => 
+            words.some(w => entry.polish.toLowerCase().includes(w))
+        ).slice(0, 30);
+        
+        return matches.map(m => `- POLSKIE: ${m.polish} | UŻYJ FORMY: ${m.slovian} | GRAMATYKA: ${m['type and case'] || ''}`).join('\n');
+    }
+
+    // 3. INICJALIZACJA WEB-LLM
+    async function initAI() {
+        const status = document.getElementById("status");
+        try {
+            engine = await webllm.CreateMLCEngine(modelId, {
+                initProgressCallback: (p) => { status.innerText = "Ładowanie modelu: " + Math.round(p.progress * 100) + "%"; }
+            });
+            status.innerText = "Model gotowy do pracy.";
+        } catch (e) {
+            status.innerText = "Błąd: Twoja przeglądarka/sprzęt nie obsługuje WebGPU.";
+        }
+    }
+
+    // 4. FUNKCJA TŁUMACZĄCA
+    async function translate() {
+        const input = document.getElementById("userInput").value;
+        const btn = document.getElementById("translateBtn");
+        const outDiv = document.getElementById("output");
+        const resText = document.getElementById("responseText");
+        const sourcesDiv = document.getElementById("sources");
+
+        if (!input) return;
+        
+        btn.disabled = true;
+        resText.innerText = "Orzmyslь nad čęstьmi ęzyka...";
+        outDiv.style.display = "block";
+
+        const context = getContext(input);
+        const systemPrompt = `Jesteś rygorystycznym silnikiem tłumaczącym z polskiego na prasłowiański. 
+        KRYTYCZNA ZASADA: PRZYMIOTNIK ZAWSZE PRZED RZECZOWNIKIEM. 
+        ALFABET: Tylko łaciński + ě, ę, ǫ, ь. Zakaz cyrylicy!
+        BAZA WIEDZY:
+        ${context}`;
+
+        const messages = [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: `DO TŁUMACZENIA: ${input}` }
+        ];
+
+        try {
+            const reply = await engine.chat.completions.create({ messages, temperature: 0.0 });
+            resText.innerText = reply.choices[0].message.content;
+            sourcesDiv.innerText = "Użyto dopasowań z osnova.json: " + (context ? "Tak" : "Brak bezpośrednich");
+        } catch (e) {
+            resText.innerText = "Błąd tłumaczenia: " + e;
+        }
+        btn.disabled = false;
+    }
+
+    loadDict();
+    initAI();
+</script>
+
+</body>
+</html>
