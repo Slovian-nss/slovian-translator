@@ -17,41 +17,33 @@
     </style>
 </head>
 <body>
-
 <div class="container">
     <h2>Perkladačь slověnьskogo ęzyka</h2>
     <p style="color: #888;">Vupiši slovo abo rěčenьje:</p>
     <input type="text" id="userInput" placeholder="np. Matka i ojciec...">
     <button onclick="translateText()">Perloži</button>
-    
+   
     <div id="loader">Orzmyslь nad čęstьmi ęzyka i perklad...</div>
-
     <div id="output">
         <h3>Vynik perklada:</h3>
         <div id="responseText" style="font-size: 1.2rem;"></div>
         <div id="contextData" class="source-box"></div>
     </div>
 </div>
-
 <script>
-    const GROQ_API_KEY = "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";
+    const GEMINI_API_KEY = "AIzaSyAX0z7qNWbtPberToL_v1WmiiqPX2YnC6k";
     let dictionary = [];
-
     async function loadDatabase() {
         try {
             const response = await fetch('osnova.json');
             dictionary = await response.json();
         } catch (e) { console.error("Błąd bazy:", e); }
     }
-
     async function translateText() {
         const input = document.getElementById('userInput').value;
         if (!input) return;
-
-        // Pokazujemy loader
         document.getElementById('loader').style.display = "block";
         document.getElementById('output').style.display = "none";
-
         const systemPrompt = `Jesteś rygorystycznym silnikiem tłumaczącym z języka polskiego na język prasłowiański.
 Twoim jedynym źródłem prawdy jest dostarczona BAZA WIEDZY (osnova.json).
 ### KRYTYCZNA ZASADA ORTOGRAFI I INNYCH JĘZYKOWYCH BŁĘDÓW:
@@ -88,7 +80,6 @@ KONKRETNE PRZYKŁADY MIEJSCOWNIKA:
    - \"w bożym\" = \"vu božemь\" (przymiotnik męski locative singular: rdzeń božь + końcówka -emь)
    - \"słudze\" = \"sludzě\" (rzeczownik męski locative singular: sluga > sludzě, g>dz przed ě)
    - KOLEJNOŚĆ: przymiotnik (božemь) PRZED rzeczownikiem (sludzě)
-
 2. \"Siła jest w prawdzie bożej\" = \"Sila estь vu božeji pravьdě\"
    - \"w bożej prawdzie\" = \"vu božeji pravьdě\" (NIE \"pravьdě božej\"!)
    - \"božej\" (polski) → \"božeji\" (słowiański, przymiotnik żeński locative singular)
@@ -154,47 +145,42 @@ KONKRETNE PRZYKŁADY MIEJSCOWNIKA:
    - Jeśli widzisz słowo w cyrylicy w bazie, MUSISZ je przetransponować na łacinę
 3. SYMBOLE: Zachowaj liczby, znaki matematyczne i linki bez zmian.
 4. WALIDACJA: Przed zwróceniem sprawdź, czy NIE UŻYŁEŚ cyrylicy (oprócz ь/Ь).
-
 Zwróć TYLKO czyste tłumaczenie używając alfabetu łacińskiego + ě, ę, ǫ, ь/Ь i nic więcej.`;
-
         try {
-            // Używamy bezpośredniego połączenia fetch, które jest stabilniejsze w przeglądarce
-            const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=${GEMINI_API_KEY}`, {
                 method: "POST",
                 headers: {
-                    "Authorization": `Bearer ${GROQ_API_KEY}`,
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
-                    model: "openai/gpt-oss-120b", // Zmieniono na stabilny model Groq
-                    messages: [
-                        { role: "system", content: systemPrompt },
-                        { role: "user", content: input }
-                    ],
-                    temperature: 0
+                    systemInstruction: {
+                        parts: [{ text: systemPrompt }]
+                    },
+                    contents: [{
+                        role: "user",
+                        parts: [{ text: input }]
+                    }],
+                    generationConfig: {
+                        temperature: 0
+                    }
                 })
             });
-
             const data = await response.json();
-            
-            if (data.choices && data.choices[0]) {
-                document.getElementById('responseText').innerText = data.choices[0].message.content;
+           
+            if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0]) {
+                document.getElementById('responseText').innerText = data.candidates[0].content.parts[0].text;
                 document.getElementById('output').style.display = "block";
             } else {
-                alert("Groq zwrócił pustą odpowiedź. Sprawdź limit klucza.");
+                alert("Gemini zwrócił pustą odpowiedź. Sprawdź klucz.");
             }
         } catch (e) {
             console.error(e);
-            alert("Błąd połączenia z AI. Sprawdź konsolę (F12).");
+            alert("Błąd połączenia z Gemini. Sprawdź konsolę (F12).");
         } finally {
             document.getElementById('loader').style.display = "none";
         }
     }
     loadDatabase();
 </script>
-
 </body>
 </html>
-
-
-
