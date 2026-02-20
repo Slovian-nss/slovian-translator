@@ -4,113 +4,85 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Perkladačь slověnьskogo ęzyka</title>
-    <script src="https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm"></script>
     <style>
-        body { background-color: #0e1117; color: #dcdcdc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; max-width: 800px; margin: auto; }
-        .container { background-color: #1a1a1a; padding: 20px; border-radius: 10px; border: 1px solid #333; }
-        input { width: 100%; padding: 12px; background: #000; border: 1px solid #444; color: white; border-radius: 5px; margin-bottom: 10px; }
-        button { background-color: #2e7d32; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; width: 100%; }
-        button:disabled { background-color: #555; }
-        #output { margin-top: 20px; padding: 15px; background-color: #050505; border-left: 5px solid #2e7d32; display: none; }
-        #status { color: #888; font-size: 0.8rem; margin-top: 10px; }
-        .source-box { font-size: 0.8rem; color: #777; margin-top: 10px; border-top: 1px dashed #444; padding-top: 10px; }
+        body { background-color: #0e1117; color: #dcdcdc; font-family: 'Segoe UI', sans-serif; padding: 20px; max-width: 800px; margin: auto; }
+        .main-container { background-color: #1a1a1a; padding: 30px; border-radius: 10px; border: 1px solid #333; }
+        h1 { color: #fff; text-align: center; font-size: 1.8rem; }
+        input { width: 100%; padding: 15px; background-color: #000; color: #dcdcdc; border: 1px solid #333; border-radius: 5px; box-sizing: border-box; font-size: 1rem; }
+        button { width: 100%; padding: 15px; background-color: #2e7d32; color: white; border: none; border-radius: 5px; margin-top: 15px; cursor: pointer; font-weight: bold; }
+        #output { margin-top: 25px; display: none; }
+        .success-box { background-color: #050505; border: 1px solid #2e7d32; color: #dcdcdc; padding: 20px; border-radius: 5px; font-size: 1.2rem; }
+        .loader { display: none; text-align: center; color: #888; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2>Perkladačь slověnьskogo ęzyka</h2>
-    <p style="color: #888;">AI tłumaczy lokalnie na Twoim komputerze (bez limitów).</p>
-    
+<div class="main-container">
+    <h1>Perkladačь slověnьskogo ęzyka</h1>
     <input type="text" id="userInput" placeholder="Vupiši slovo abo rěčenьje...">
-    <button id="translateBtn" onclick="translate()">Perkladi</button>
-    
-    <div id="status">Inicjalizacja modelu... (może to zająć chwilę przy pierwszym razie)</div>
-    
+    <button onclick="translate()">Perkladi</button>
+    <div id="loader" class="loader">Orzmyslь nad čęstьmi ęzyka i perklad...</div>
     <div id="output">
-        <strong style="color: #2e7d32;">Vynik perklada:</strong>
-        <p id="responseText"></p>
-        <div id="sources" class="source-box"></div>
+        <p style="color: #888; font-size: 0.9rem;">Vynik perklada:</p>
+        <div id="responseText" class="success-box"></div>
     </div>
 </div>
 
 <script>
-    let engine;
-    const modelId = "Llama-3-8B-Instruct-q4f16_1-MLC"; // Możesz zmienić na mniejszy model np. "Gemma-2b-it-q4f16_1-MLC" dla szybkości
+    // WKLEJ SWÓJ KLUCZ TUTAJ
+    const API_KEY = "AIzaSyBwnDdFMEPh0tM4grHhfJ_msuQ5SwC_U9A"; 
+    
     let dictionary = [];
-
-    // 1. ŁADOWANIE SŁOWNIKA (Zastąp ścieżką do swojego pliku lub wklej treść)
-    async function loadDict() {
+    async function loadData() {
         try {
-            const response = await fetch('osnova.json');
-            dictionary = await response.json();
-        } catch (e) {
-            console.error("Błąd ładowania osnova.json", e);
-        }
+            const resp = await fetch('osnova.json');
+            dictionary = await resp.json();
+        } catch (e) { console.error("Blǫd osnovy", e); }
     }
 
-    // 2. LOGIKA RAG (Lokalne dopasowanie kontekstu)
     function getContext(text) {
-        const words = text.toLowerCase().replace(/[^\w\s]/g, '').split(' ');
-        let matches = dictionary.filter(entry => 
-            words.some(w => entry.polish.toLowerCase().includes(w))
-        ).slice(0, 30);
-        
+        const words = text.toLowerCase().split(/\s+/);
+        let matches = dictionary.filter(e => words.some(w => e.polish.toLowerCase().includes(w))).slice(0, 40);
         return matches.map(m => `- POLSKIE: ${m.polish} | UŻYJ FORMY: ${m.slovian} | GRAMATYKA: ${m['type and case'] || ''}`).join('\n');
     }
 
-    // 3. INICJALIZACJA WEB-LLM
-    async function initAI() {
-        const status = document.getElementById("status");
-        try {
-            engine = await webllm.CreateMLCEngine(modelId, {
-                initProgressCallback: (p) => { status.innerText = "Ładowanie modelu: " + Math.round(p.progress * 100) + "%"; }
-            });
-            status.innerText = "Model gotowy do pracy.";
-        } catch (e) {
-            status.innerText = "Błąd: Twoja przeglądarka/sprzęt nie obsługuje WebGPU.";
-        }
-    }
-
-    // 4. FUNKCJA TŁUMACZĄCA
     async function translate() {
-        const input = document.getElementById("userInput").value;
-        const btn = document.getElementById("translateBtn");
-        const outDiv = document.getElementById("output");
-        const resText = document.getElementById("responseText");
-        const sourcesDiv = document.getElementById("sources");
+        const input = document.getElementById('userInput').value;
+        if(!input) return;
 
-        if (!input) return;
-        
-        btn.disabled = true;
-        resText.innerText = "Orzmyslь nad čęstьmi ęzyka...";
-        outDiv.style.display = "block";
+        document.getElementById('loader').style.display = "block";
+        document.getElementById('output').style.display = "none";
 
         const context = getContext(input);
-        const systemPrompt = `Jesteś rygorystycznym silnikiem tłumaczącym z polskiego na prasłowiański. 
-        KRYTYCZNA ZASADA: PRZYMIOTNIK ZAWSZE PRZED RZECZOWNIKIEM. 
-        ALFABET: Tylko łaciński + ě, ę, ǫ, ь. Zakaz cyrylicy!
-        BAZA WIEDZY:
-        ${context}`;
-
-        const messages = [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: `DO TŁUMACZENIA: ${input}` }
-        ];
+        const systemPrompt = `Jesteś rygorystycznym silnikiem tłumaczącym z języka polskiego na język prasłowiański.
+Twoim jedynym źródłem prawdy jest dostarczona BAZA WIEDZY (osnova.json).
+### KRYTYCZNA ZASADA ORTOGRAFI I INNYCH JĘZYKOWYCH BŁĘDÓW:
+-Analizujesz błędy i je poprawiasz przed tłumaczeniem.
+### KRYTYCZNA ZASADA CO DO JĘZYKA SŁOWIAŃSKIEGO:
+PRZYMIOTNIK ZAWSZE PRZED RZECZOWNIKIEM - TO JEST ABSOLUTNIE OBOWIĄZKOWE!
+### KRYTYCZNA ZASADA WIELKOŚCI LITER:
+- MUSISZ DOKŁADNIE odtwarzać wielkość liter użytkownika Case-by-Case.
+### PROCEDURA ANALIZY:
+1. IDENTYFIKACJA KONTEKSTU. 2. DOPASOWANIE Z osnova.json. 3. ZMIANA KOLEJNOŚCI (Przymiotnik przed rzeczownik). 4. REKONSTRUKCJA FORMATU. 5. BRAK SŁOWA: zwróć "(ne najdeno slova)".
+### TWORZENIE ODMIAN SŁÓW:
+Użyj logiki z vuzor.json (palatalizacja k > c przed ě).
+Zwróć TYLKO czyste tłumaczenie alfabetem łacińskim + ě, ę, ǫ, ь/Ь.`;
 
         try {
-            const reply = await engine.chat.completions.create({ messages, temperature: 0.0 });
-            resText.innerText = reply.choices[0].message.content;
-            sourcesDiv.innerText = "Użyto dopasowań z osnova.json: " + (context ? "Tak" : "Brak bezpośrednich");
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ contents: [{ parts: [{ text: `${systemPrompt}\n\nBAZA:\n${context}\n\nDO TŁUMACZENIA: ${input}` }] }] })
+            });
+            const data = await response.json();
+            document.getElementById('responseText').innerText = data.candidates[0].content.parts[0].text;
+            document.getElementById('output').style.display = "block";
         } catch (e) {
-            resText.innerText = "Błąd tłumaczenia: " + e;
+            alert("Błąd połączenia z AI.");
         }
-        btn.disabled = false;
+        document.getElementById('loader').style.display = "none";
     }
-
-    loadDict();
-    initAI();
+    loadData();
 </script>
-
 </body>
 </html>
