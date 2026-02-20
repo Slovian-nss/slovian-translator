@@ -1,1 +1,0 @@
-# slovian-translator
