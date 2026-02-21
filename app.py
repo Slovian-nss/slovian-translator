@@ -1,57 +1,46 @@
 import streamlit as st
-import json
-import os
 from openai import OpenAI
+import sys
 
-# =========================
-# KONFIGURACJA OPENAI
-# =========================
+# WYMUSZENIE UTF-8
+sys.stdout.reconfigure(encoding="utf-8")
+sys.stderr.reconfigure(encoding="utf-8")
 
-# Wklej swój klucz API tutaj:
-OPENAI_API_KEY = "TU_WKLEJ_SWÓJ_KLUCZ_API"
-
-client = OpenAI(api_key=OPENAI_API_KEY)
-
+# OPENAI
+client = OpenAI(api_key=st.secrets["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"])
 MODEL = "gpt-4o-mini"
 
-# =========================
-# PROMPT SYSTEMOWY
-# =========================
-
+# PROMPT
 SYSTEM_PROMPT = """
 You are a scientific Proto-Slavic translator.
 
-Translate into reconstructed Proto-Slavic.
+Translate Polish into reconstructed Proto-Slavic.
 
-Rules:
+STRICT RULES:
 
-• Use standard scientific reconstruction
-• Use symbols: ě, ę, ǫ, š, č, ž, ь, ъ
-• Preserve morphology
-• Use infinitive form for verbs
-• Do NOT explain anything
-• Output ONLY the Proto-Slavic word or phrase
-• No punctuation
+• Use scientific reconstruction
+• Use characters: ě, ę, ǫ, š, č, ž, ь, ъ
+• Use infinitive for verbs
+• Output ONLY translation
+• No explanation
 • No quotes
-• No extra text
+• No punctuation
 
 Examples:
 
-Polish: usprawiedliwić
-Proto-Slavic: opravьdati
-
-Polish: człowiek
-Proto-Slavic: čovьkъ
+Polish: matka
+Proto-Slavic: matь
 
 Polish: dom
 Proto-Slavic: domъ
+
+Polish: usprawiedliwić
+Proto-Slavic: opravьdati
 """
 
-# =========================
-# FUNKCJA TŁUMACZENIA
-# =========================
-
-def translate(text: str) -> str:
+# CACHE (przyspiesza)
+@st.cache_data(show_spinner=False)
+def translate(text: str):
 
     if not text.strip():
         return ""
@@ -62,59 +51,51 @@ def translate(text: str) -> str:
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": text}
         ],
-        temperature=0.1,
-        max_tokens=50,
+        temperature=0,
+        max_tokens=50
     )
 
-    return response.choices[0].message.content.strip()
+    result = response.choices[0].message.content
+
+    # wymuszenie string UTF-8
+    return str(result)
 
 
-# =========================
-# STREAMLIT UI
-# =========================
-
-st.set_page_config(
-    page_title="Proto-Slavic Translator",
-    page_icon="Ⱄ",
-    layout="centered"
-)
+# UI
+st.set_page_config(page_title="Proto-Slavic Translator")
 
 st.title("Proto-Slavic Translator")
 st.caption("Scientific reconstruction")
 
 # session state
-if "last_text" not in st.session_state:
-    st.session_state.last_text = ""
+if "input" not in st.session_state:
+    st.session_state.input = ""
 
-if "translation" not in st.session_state:
-    st.session_state.translation = ""
+if "output" not in st.session_state:
+    st.session_state.output = ""
 
-
-# input field (auto translate)
+# input
 text = st.text_input(
     "Polish",
-    value=st.session_state.last_text,
-    placeholder="np. usprawiedliwić",
+    placeholder="Matka jest w ogrodzie",
     label_visibility="collapsed"
 )
 
+# AUTO TRANSLATE
+if text != st.session_state.input:
 
-# automatyczne tłumaczenie (bez Enter)
-if text != st.session_state.last_text:
+    st.session_state.input = text
 
-    st.session_state.last_text = text
-
-    with st.spinner("Translating..."):
-        try:
-            st.session_state.translation = translate(text)
-        except Exception as e:
-            st.session_state.translation = f"Error: {e}"
+    try:
+        st.session_state.output = translate(text)
+    except Exception as e:
+        st.session_state.output = f"Error: {str(e)}"
 
 
 # output
 st.text_input(
     "Proto-Slavic",
-    value=st.session_state.translation,
+    value=st.session_state.output,
     disabled=True,
     label_visibility="collapsed"
 )
