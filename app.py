@@ -1,101 +1,223 @@
 import streamlit as st
-from openai import OpenAI
+import json
+import os
+import re
 import sys
+from openai import OpenAI
 
-# WYMUSZENIE UTF-8
+# ============================================================
+# UTF-8 FIX (KLUCZOWE)
+# ============================================================
+
+os.environ["PYTHONIOENCODING"] = "utf-8"
 sys.stdout.reconfigure(encoding="utf-8")
 sys.stderr.reconfigure(encoding="utf-8")
 
-# OPENAI
-client = OpenAI(api_key=st.secrets["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"])
+# ============================================================
+# KONFIGURACJA
+# ============================================================
+
+st.set_page_config(
+    page_title="Perkladačь slověnьskogo ęzyka",
+    layout="centered"
+)
+
+st.markdown("""
+<style>
+.main { background-color: #0e1117; }
+.stTextInput > div > div > input {
+    background-color: #1a1a1a;
+    color: #dcdcdc;
+    border: 1px solid #333;
+}
+.stSuccess {
+    background-color: #050505;
+    border: 1px solid #2e7d32;
+    color: #dcdcdc;
+    font-size: 1.2rem;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ============================================================
+# OPENAI CLIENT
+# ============================================================
+
+client = OpenAI(
+    api_key=st.secrets["OPENAI_API_KEY"]
+)
+
 MODEL = "gpt-4o-mini"
 
+# ============================================================
+# ŁADOWANIE SŁOWNIKA
+# ============================================================
+
+@st.cache_data
+def load_dictionary():
+
+    if not os.path.exists("osnova.json"):
+        return {}
+
+    with open("osnova.json", "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    index = {}
+
+    for entry in data:
+
+        pl = entry.get("polish", "").lower().strip()
+
+        if pl:
+            if pl not in index:
+                index[pl] = []
+
+            index[pl].append(entry)
+
+    return index
+
+
+dictionary = load_dictionary()
+
+# ============================================================
+# RAG
+# ============================================================
+
+def get_relevant_context(text, dic):
+
+    search_text = re.sub(r'[^\w\s]', '', text.lower())
+    words = search_text.split()
+
+    relevant_entries = []
+
+    for word in words:
+
+        if word in dic:
+            relevant_entries.extend(dic[word])
+
+        elif len(word) > 3:
+
+            for key in dic.keys():
+
+                if word.startswith(key[:4]):
+                    relevant_entries.extend(dic[key])
+
+    seen = set()
+    unique = []
+
+    for e in relevant_entries:
+
+        identifier = (e['slovian'], e.get('type and case', ''))
+
+        if identifier not in seen:
+
+            seen.add(identifier)
+            unique.append(e)
+
+    return unique[:40]
+
+# ============================================================
 # PROMPT
+# ============================================================
+
 SYSTEM_PROMPT = """
-You are a scientific Proto-Slavic translator.
+Jesteś rygorystycznym silnikiem tłumaczącym z języka polskiego na język prasłowiański.
 
-Translate Polish into reconstructed Proto-Slavic.
+Używaj WYŁĄCZNIE alfabetu łacińskiego oraz znaków:
+ě ę ǫ š č ž ь
 
-STRICT RULES:
-
-• Use scientific reconstruction
-• Use characters: ě, ę, ǫ, š, č, ž, ь, ъ
-• Use infinitive for verbs
-• Output ONLY translation
-• No explanation
-• No quotes
-• No punctuation
-
-Examples:
-
-Polish: matka
-Proto-Slavic: matь
-
-Polish: dom
-Proto-Slavic: domъ
-
-Polish: usprawiedliwić
-Proto-Slavic: opravьdati
+Zwróć TYLKO tłumaczenie.
+Bez komentarzy.
+Bez wyjaśnień.
 """
 
-# CACHE (przyspiesza)
-@st.cache_data(show_spinner=False)
-def translate(text: str):
+# ============================================================
+# FUNKCJA TŁUMACZENIA
+# ============================================================
 
-    if not text.strip():
-        return ""
+def translate(user_input, context_str):
 
-    response = client.chat.completions.create(
+    completion = client.chat.completions.create(
+
         model=MODEL,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": text}
-        ],
+
         temperature=0,
-        max_tokens=50
+
+        messages=[
+
+            {
+                "role": "system",
+                "content": SYSTEM_PROMPT
+            },
+
+            {
+                "role": "user",
+                "content": f"BAZA:\n{context_str}\n\nDO TŁUMACZENIA:\n{user_input}"
+            }
+
+        ]
+
     )
 
-    result = response.choices[0].message.content
-
-    # wymuszenie string UTF-8
-    return str(result)
+    return completion.choices[0].message.content.strip()
 
 
+# ============================================================
 # UI
-st.set_page_config(page_title="Proto-Slavic Translator")
+# ============================================================
 
-st.title("Proto-Slavic Translator")
-st.caption("Scientific reconstruction")
+st.title("Perkladačь slověnьskogo ęzyka")
 
-# session state
-if "input" not in st.session_state:
-    st.session_state.input = ""
+if "last" not in st.session_state:
+    st.session_state.last = ""
 
-if "output" not in st.session_state:
-    st.session_state.output = ""
+if "result" not in st.session_state:
+    st.session_state.result = ""
 
-# input
-text = st.text_input(
-    "Polish",
-    placeholder="Matka jest w ogrodzie",
-    label_visibility="collapsed"
+user_input = st.text_input(
+    "Vupiši slovo abo rěčenьje:",
+    placeholder=""
 )
 
 # AUTO TRANSLATE
-if text != st.session_state.input:
+if user_input != st.session_state.last:
 
-    st.session_state.input = text
+    st.session_state.last = user_input
 
-    try:
-        st.session_state.output = translate(text)
-    except Exception as e:
-        st.session_state.output = f"Error: {str(e)}"
+    if user_input:
+
+        with st.spinner("Perklad..."):
+
+            matches = get_relevant_context(
+                user_input,
+                dictionary
+            )
+
+            context_str = "\n".join([
+
+                f"{m['polish']} → {m['slovian']} ({m.get('type and case','')})"
+
+                for m in matches
+
+            ])
+
+            try:
+
+                result = translate(
+                    user_input,
+                    context_str
+                )
+
+                st.session_state.result = result
+
+            except Exception as e:
+
+                st.session_state.result = f"ERROR: {str(e)}"
 
 
-# output
-st.text_input(
-    "Proto-Slavic",
-    value=st.session_state.output,
-    disabled=True,
-    label_visibility="collapsed"
-)
+# OUTPUT
+if st.session_state.result:
+
+    st.markdown("### Vynik perklada:")
+
+    st.success(st.session_state.result)
