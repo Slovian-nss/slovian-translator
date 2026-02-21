@@ -5,68 +5,93 @@ import re
 from groq import Groq
 
 # ============================================================
-# 1. KONFIGURACJA I STYLIZACJA (Styl DeepL)
+# 1. KONFIGURACJA I STYLIZACJA
 # ============================================================
-st.set_page_config(page_title="Perkladačь slověnьskogo ęzyka", layout="wide")
-
-# Wykrywanie języka urządzenia/przeglądarki
-try:
-    browser_lang = st.query_params.get("lang", ["pl"])[0][:2].lower()
-except:
-    browser_lang = "pl"
+st.set_page_config(page_title="Perkladačь slověnьskogo ęzyka", layout="centered")
 
 st.markdown("""
     <style>
     .main { background-color: #0e1117; }
-    .stTextArea textarea { background-color: #1a1a1a; color: #dcdcdc; border: 1px solid #333; font-size: 1.1rem; height: 200px !important; }
-    .output-container { background-color: #161616; border: 1px solid #2e7d32; border-radius: 5px; padding: 15px; min-height: 200px; color: #dcdcdc; font-size: 1.2rem; }
+    .stTextInput > div > div > input { background-color: #1a1a1a; color: #dcdcdc; border: 1px solid #333; }
+    .stSuccess { background-color: #050505; border: 1px solid #2e7d32; color: #dcdcdc; font-size: 1.2rem; }
     .stCaption { color: #888; }
     </style>
     """, unsafe_allow_html=True)
 
 # ============================================================
-# 2. KLUCZ API
+# 2. KLUCZ API I NOWY MODEL (openai/gpt-oss-120b)
 # ============================================================
+# Zaktualizowano model na openai/gpt-oss-120b, który zastąpił wycofany model
 GROQ_API_KEY = "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" 
 client = Groq(api_key=GROQ_API_KEY)
 
 # ============================================================
-# 3. ŁADOWANIE BAZ DANYCH
+# 3. ŁADOWANIE BAZY DANYCH
 # ============================================================
 @st.cache_data
-def load_json(filename):
-    if not os.path.exists(filename): return {}
-    with open(filename, "r", encoding="utf-8") as f:
-        return json.load(f)
+def load_dictionary():
+    if not os.path.exists("osnova.json"):
+        return {}
+    try:
+        with open("osnova.json", "r", encoding="utf-8") as f:
+            data = json.load(f)
+        index = {}
+        for entry in data:
+            pl = entry.get("polish", "").lower().strip()
+            if pl:
+                if pl not in index: index[pl] = []
+                index[pl].append(entry)
+        return index
+    except Exception as e:
+        st.error(f"Blǫd osnovy: {e}")
+        return {}
 
-dictionary = load_json("osnova.json")
-vuzory = load_json("vuzor.json")
+dictionary = load_dictionary()
 
+# ============================================================
+# 4. INTELIGENTNA LOGIKA RAG
+# ============================================================
 def get_relevant_context(text, dic):
     search_text = re.sub(r'[^\w\s]', '', text.lower())
     words = search_text.split()
     relevant_entries = []
+    
     for word in words:
         if word in dic:
-            # Zakładając, że dictionary jest zaindeksowany po polsku (jako pośredniku)
-            for entry in dic:
-                if entry.get("polish", "").lower() == word:
-                    relevant_entries.append(entry)
-    return relevant_entries[:50]
-
-# ============================================================
-# 4. LOGIKA TŁUMACZENIA (PROMPT)
-# ============================================================
-def translate_text(input_text):
-    if not input_text: return ""
+            relevant_entries.extend(dic[word])
+        elif len(word) > 3:
+            for key in dic.keys():
+                if word.startswith(key[:4]) and len(key) > 3:
+                    relevant_entries.extend(dic[key])
     
-    matches = get_relevant_context(input_text, dictionary)
-    context_str = "\n".join([
-        f"- POL: {m.get('polish')} | SLOV: {m.get('slovian')} | GRAM: {m.get('type and case','')}"
-        for m in matches
-    ])
+    seen = set()
+    unique_entries = []
+    for e in relevant_entries:
+        identifier = (e['slovian'], e.get('type and case', ''))
+        if identifier not in seen:
+            seen.add(identifier)
+            unique_entries.append(e)
+            
+    return unique_entries[:40]
 
-    system_prompt = """Jesteś rygorystycznym silnikiem tłumaczącym z języka polskiego na język prasłowiański.
+# ============================================================
+# 5. INTERFEJS I PROMPT
+# ============================================================
+st.title("Perkladačь slověnьskogo ęzyka")
+
+user_input = st.text_input("Vupiši slovo abo rěčenьje:", placeholder="")
+
+if user_input:
+    with st.spinner("Orzmyslь nad čęstьmi ęzyka i perklad..."):
+        matches = get_relevant_context(user_input, dictionary)
+        
+        # Przygotowanie kontekstu tak, by AI widziało Mati i ogordě jako jedyne opcje
+        context_str = "\n".join([
+            f"- POLSKIE: {m['polish']} | UŻYJ FORMY: {m['slovian']} | GRAMATYKA: {m.get('type and case','')}"
+            for m in matches
+        ])
+
+        system_prompt = """Jesteś rygorystycznym silnikiem tłumaczącym z języka polskiego na język prasłowiański.
 Twoim jedynym źródłem prawdy jest dostarczona BAZA WIEDZY (osnova.json).
 ### KRYTYCZNA ZASADA ORTOGRAFI I INNYCH JĘZYKOWYCH BŁĘDÓW:
 -Analizujesz na początku w słowie albo w tekście do tłumaczenia, czy użytkownik nie popełnił błędów i jako jest błąd, to jego wtedy wewnętrznie poprawiasz i dopiero wtedy bierzesz się za tłumaczenie, przekład na słowiański i na opak to samo, jeśli ze słowiańskiego (prasłowiańskiego) na wybrany język.
@@ -171,40 +196,26 @@ KONKRETNE PRZYKŁADY MIEJSCOWNIKA:
 
 Zwróć TYLKO czyste tłumaczenie używając alfabetu łacińskiego + ě, ę, ǫ, ь/Ь i nic więcej."""
 
-    try:
-        completion = client.chat.completions.create(
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"BAZA:\n{context_str}\n\nWZORY ODMIAN:\n{str(vuzory)[:1000]}\n\nTEKST: {input_text}"}
-            ],
-            model="llama-3.3-70b-versatile", # Szybszy model dla natychmiastowego efektu
-            temperature=0.0
-        )
-        return completion.choices[0].message.content.strip()
-    except Exception as e:
-        return f"Błąd: {e}"
+        try:
+            # Wywołanie modelu tłumaczenia
+            chat_completion = client.chat.completions.create(
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": f"BAZA:\n{context_str}\n\nDO TŁUMACZENIA: {user_input}"}
+                ],
+                model="llama-3.3-70b-versatile",
+                temperature=0.0
+            )
 
-# ============================================================
-# 5. INTERFEJS UŻYTKOWNIKA (Automatyczny)
-# ============================================================
-st.title("Perkladačь slověnьskogo ęzyka")
+            response_text = chat_completion.choices[0].message.content.strip()
 
-col1, col2 = st.columns(2)
+            st.markdown("### Vynik perklada:")
+            st.success(response_text)
 
-with col1:
-    # Wykorzystanie klucza w session_state do wykrywania zmian bez przycisku
-    input_val = st.text_area("Vupiši tekst (dowolny język):", key="input_area", placeholder="Wpisz tutaj...")
+            if matches:
+                with st.expander("Užito žerdlo jiz osnovy"):
+                    for m in matches:
+                        st.write(f"**{m['polish']}** → `{m['slovian']}` ({m.get('type and case','')})")
 
-with col2:
-    st.write("Perklad (Slověnьsky / Wybrany język):")
-    if input_val:
-        with st.spinner("Translating..."):
-            result = translate_text(input_val)
-            st.markdown(f'<div class="output-container">{result}</div>', unsafe_allow_html=True)
-    else:
-        st.markdown('<div class="output-container"></div>', unsafe_allow_html=True)
-
-# Automatyczne odświeżanie interfejsu przy każdej zmianie w text_area
-if input_val:
-    st.caption(f"Język interfejsu dopasowany do: {browser_lang}")
-
+        except Exception as e:
+            st.error(f"Blǫd umětьnogo uma: {e}")
