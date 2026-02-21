@@ -14,8 +14,9 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 @st.cache_data
-def load_osnova():
-    if not os.path.exists("osnova.json"): return {}
+def load_dictionary():
+    if not os.path.exists("osnova.json"):
+        return {}
     try:
         with open("osnova.json", "r", encoding="utf-8") as f:
             data = json.load(f)
@@ -26,34 +27,11 @@ def load_osnova():
                 if pl not in index: index[pl] = []
                 index[pl].append(entry)
         return index
-    except: return {}
+    except Exception as e:
+        st.error(f"Blǫd osnovy: {e}")
+        return {}
 
-@st.cache_data
-def load_vuzor():
-    if not os.path.exists("vuzor.json"): return {}
-    try:
-        with open("vuzor.json", "r", encoding="utf-8") as f:
-            data = json.load(f)
-        index = {}
-        for entry in data:
-            pl = entry.get("polish", "").lower().strip()
-            if pl:
-                if pl not in index: index[pl] = []
-                index[pl].append(entry)
-        return index
-    except: return {}
-
-def load_all():
-    osn = load_osnova()
-    vuz = load_vuzor()
-    combined = {}
-    for d in [osn, vuz]:
-        for k, v in d.items():
-            if k not in combined: combined[k] = []
-            combined[k].extend(v)
-    return combined
-
-dictionary = load_all()
+dictionary = load_dictionary()
 
 def get_relevant_context(text, dic):
     search_text = re.sub(r'[^\w\s]', '', text.lower())
@@ -69,7 +47,7 @@ def get_relevant_context(text, dic):
     seen = set()
     unique_entries = []
     for e in relevant_entries:
-        identifier = (e.get('slovian',''), e.get('type and case',''))
+        identifier = (e['slovian'], e.get('type and case', ''))
         if identifier not in seen:
             seen.add(identifier)
             unique_entries.append(e)
@@ -80,12 +58,28 @@ def local_translate(text, dic):
         word = match.group(0)
         lower_word = word.lower()
         if lower_word in dic and dic[lower_word]:
-            base_slov = dic[lower_word][0].get('slovian', word)
-            if word.isupper(): return base_slov.upper()
-            if word and word[0].isupper(): return base_slov[0].upper() + base_slov[1:].lower()
-            return base_slov
-        return "(ne najdeno slova)" if not word[0].isupper() else "(Ne najdeno slova)" if not word.isupper() else "(NE NAJDENO SLOVA)"
-    return re.sub(r'(?u)\b\w+\b', replacer, text)
+            base_slov = dic[lower_word][0].get('slovian', '')
+            if len(word) == len(base_slov):
+                translated = ''.join(
+                    base_slov[i].upper() if word[i].isupper() else base_slov[i].lower()
+                    for i in range(len(word))
+                )
+            elif word.isupper():
+                translated = base_slov.upper()
+            elif word and word[0].isupper():
+                translated = (base_slov[0].upper() + base_slov[1:].lower()) if base_slov else ''
+            else:
+                translated = base_slov.lower() if base_slov else ''
+            return translated
+        else:
+            if word.isupper():
+                return "(NE NAJDENO SLOVA)"
+            elif word and word[0].isupper():
+                return "(Ne najdeno slova)"
+            else:
+                return "(ne najdeno slova)"
+    word_pattern = r'(?u)\b\w+\b'
+    return re.sub(word_pattern, replacer, text)
 
 st.title("Perkladačь slověnьskogo ęzyka")
 user_input = st.text_input("Vupiši slovo abo rěčenьje:", placeholder="")
@@ -96,6 +90,6 @@ if user_input:
         st.markdown("### Vynik perklada:")
         st.success(translated)
         if matches:
-            with st.expander("Užito žerdlo jiz osnovy i vuzora"):
+            with st.expander("Užito žerdlo jiz osnovy"):
                 for m in matches:
-                    st.write(f"**{m.get('polish','')}** → `{m.get('slovian','')}` ({m.get('type and case','')})")
+                    st.write(f"**{m['polish']}** → `{m['slovian']}` ({m.get('type and case','')})")
