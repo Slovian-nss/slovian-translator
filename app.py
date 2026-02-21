@@ -4,101 +4,108 @@ import os
 import re
 
 # ============================================================
-# 1. KONFIGURACJA
+# 1. ŁADOWANIE DANYCH
 # ============================================================
-st.set_page_config(page_title="Perkladačь (Local Engine)", layout="centered")
-
 @st.cache_data
-def load_data():
-    osnova, vuzory = [], {}
-    if os.path.exists("osnova.json"):
+def load_all_data():
+    try:
         with open("osnova.json", "r", encoding="utf-8") as f:
             osnova = json.load(f)
-    if os.path.exists("vuzor.json"):
         with open("vuzor.json", "r", encoding="utf-8") as f:
-            vuzory = json.load(f) # Zakładamy, że vuzor.json ma strukturę mapującą przypadki
-    return osnova, vuzory
+            vuzor = json.load(f)
+        return osnova, vuzor
+    except Exception as e:
+        st.error(f"Błąd ładowania plików: {e}")
+        return [], {}
 
-osnova_data, vuzory = load_data()
+osnova, vuzor = load_all_data()
 
 # ============================================================
-# 2. SILNIK ODMIAN (Logika Valhyr)
+# 2. SILNIK LINGWISTYCZNY (LOGIKA VALHYR)
 # ============================================================
 
-def find_lemma(polish_word):
-    """Szuka formy podstawowej i typu odmiany w osnova.json."""
-    pw = polish_word.lower()
-    for entry in osnova_data:
-        # Sprawdzamy czy polskie słowo pasuje do rdzenia lub formy w bazie
-        if entry['polish'].lower() == pw:
-            return entry
-    return None
+def get_stem(slovian_word):
+    """Usuwa jery i końcówki, aby uzyskać czysty rdzeń do odmiany."""
+    return slovian_word.rstrip('ъь')
 
-def apply_vuzor(lemma_entry, target_case):
-    """Aplikuje końcówkę z vuzor.json na podstawie typu słowa."""
-    slovian_base = lemma_entry['slovian']
-    word_type = lemma_entry.get('type and case', '') # np. "noun - o-stem"
+def match_case_style(original, translated):
+    """Zachowuje wielkość liter (np. Matka -> Mati)."""
+    if original.isupper(): return translated.upper()
+    if original[0].isupper(): return translated.capitalize()
+    return translated.lower()
 
-    # Logika szukania końcówki we wzorach
-    # Zakładamy, że vuzory[word_type][target_case] zwraca końcówkę
-    try:
-        if word_type in vuzory and target_case in vuzory[word_type]:
-            suffix = vuzory[word_type][target_case]
-            # Uproszczona logika zamiany końcówki (usuwanie jerów itp.)
-            base = slovian_base.rstrip('ъь') 
-            return base + suffix
-    except:
-        pass
+def translate_word(polish_word, target_case="nominative"):
+    """
+    1. Szuka słowa w osnova.json.
+    2. Pobiera typ odmiany (np. noun - o-stem - masculine).
+    3. Pobiera końcówkę z vuzor.json dla danego przypadku.
+    """
+    pw = polish_word.lower().strip(",.?!")
     
-    return slovian_base
-
-def translate_logic(text):
-    # Prosta heurystyka przypadków dla języka polskiego
-    # W pełnej wersji użyłbyś narzędzia typu SpaCy, tu robimy to "na sztywno" jak w leksemach
-    words = text.lower().split()
-    result = []
+    # Szukanie w słowniku (najpierw dopasowanie dokładne, potem rdzeń)
+    entry = next((e for e in osnova if e['polish'].lower() == pw), None)
     
+    # Prosta lematyzacja, jeśli nie znaleziono (np. "ogrodzie" -> "ogród")
+    if not entry and len(pw) > 3:
+        entry = next((e for e in osnova if pw.startswith(e['polish'].lower()[:3])), None)
+
+    if not entry:
+        return f"({polish_word}?)"
+
+    slovian_base_word = entry['slovian']
+    word_category = entry.get('type and case') # np. "noun - o-stem - masculine"
+    
+    # Pobieranie wzorca z vuzor.json
+    category_patterns = vuzor.get(word_category, {})
+    suffix = category_patterns.get(target_case, "") 
+    
+    # Składanie słowa: rdzeń + końcówka z wzorca
+    stem = get_stem(slovian_base_word)
+    final_word = stem + suffix
+    
+    # Reguła palatalizacji (Krytyczna w starosłowiańskim): g->dz, k->c przed 'ě'
+    if suffix.startswith('ě'):
+        if stem.endswith('g'): final_word = stem[:-1] + "dz" + suffix
+        elif stem.endswith('k'): final_word = stem[:-1] + "c" + suffix
+
+    return match_case_style(polish_word, final_word)
+
+def engine_v3(text):
+    words = text.split()
+    translated = []
     i = 0
+    
     while i < len(words):
-        word = words[i]
+        word = words[i].lower()
         
-        # Obsługa przyimków (np. "w" + miejscownik)
-        target_case = "nominative"
-        if word == "w" or word == "v":
-            target_case = "locative"
-            result.append("vu")
+        # Wykrywanie przyimków wymuszających przypadek (np. "w" -> miejscownik)
+        if word in ["w", "v", "we"]:
+            translated.append("vu")
             i += 1
-            if i >= len(words): break
-            word = words[i]
-
-        lemma = find_lemma(word)
-        if lemma:
-            # Rekonstrukcja słowa na podstawie wzorca
-            translated = apply_vuzor(lemma, target_case)
-            
-            # Palatalizacja (Krytyczna zasada Valhyr)
-            if target_case == "locative":
-                if translated.endswith("gě"): translated = translated[:-2] + "dzě"
-                if translated.endswith("kě"): translated = translated[:-2] + "cě"
-            
-            result.append(translated)
+            if i < len(words):
+                translated.append(translate_word(words[i], "locative"))
+        elif word == "jestem":
+            translated.append("esmb") # Bezpośrednie tłumaczenie statyczne
         else:
-            result.append(f"({word}?)")
+            translated.append(translate_word(words[i], "nominative"))
         i += 1
         
-    return " ".join(result)
+    return " ".join(translated)
 
 # ============================================================
-# 3. INTERFEJS
+# 3. INTERFEJS STREAMLIT
 # ============================================================
-st.title("Perkladačь slověnьskogo ęzyka")
+st.title("Perkladačь (Valhyr Local Engine)")
+st.markdown("---")
 
-user_input = st.text_input("Vupiši slovo abo rěčenьje:", placeholder="np. w ogrodzie")
+user_input = st.text_input("Wpisz tekst po polsku:", placeholder="np. Jestem w ogrodzie")
 
 if user_input:
-    # Symulacja działania lokalnego silnika
-    with st.spinner("Analiza morfologiczna..."):
-        output = translate_logic(user_input)
-        
+    result = engine_v3(user_input)
+    
     st.markdown("### Vynik perklada:")
-    st.success(output)
+    st.success(result)
+    
+    # Sekcja debugowania (pokazuje co widzi silnik)
+    with st.expander("Szczegóły analizy gramatycznej"):
+        st.json({"Input": user_input, "Result": result})
