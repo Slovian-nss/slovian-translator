@@ -1,301 +1,120 @@
 import streamlit as st
 import json
 import os
-import re
-import time
-from groq import Groq
+from openai import OpenAI
 
-# ============================================================
-# CONFIG
-# ============================================================
+# =========================
+# KONFIGURACJA OPENAI
+# =========================
+
+# Wklej swój klucz API tutaj:
+OPENAI_API_KEY = "TU_WKLEJ_SWÓJ_KLUCZ_API"
+
+client = OpenAI(api_key=OPENAI_API_KEY)
+
+MODEL = "gpt-4o-mini"
+
+# =========================
+# PROMPT SYSTEMOWY
+# =========================
+
+SYSTEM_PROMPT = """
+You are a scientific Proto-Slavic translator.
+
+Translate into reconstructed Proto-Slavic.
+
+Rules:
+
+• Use standard scientific reconstruction
+• Use symbols: ě, ę, ǫ, š, č, ž, ь, ъ
+• Preserve morphology
+• Use infinitive form for verbs
+• Do NOT explain anything
+• Output ONLY the Proto-Slavic word or phrase
+• No punctuation
+• No quotes
+• No extra text
+
+Examples:
+
+Polish: usprawiedliwić
+Proto-Slavic: opravьdati
+
+Polish: człowiek
+Proto-Slavic: čovьkъ
+
+Polish: dom
+Proto-Slavic: domъ
+"""
+
+# =========================
+# FUNKCJA TŁUMACZENIA
+# =========================
+
+def translate(text: str) -> str:
+
+    if not text.strip():
+        return ""
+
+    response = client.chat.completions.create(
+        model=MODEL,
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": text}
+        ],
+        temperature=0.1,
+        max_tokens=50,
+    )
+
+    return response.choices[0].message.content.strip()
+
+
+# =========================
+# STREAMLIT UI
+# =========================
 
 st.set_page_config(
-    page_title="Perkladačь slověnьskogo ęzyka",
+    page_title="Proto-Slavic Translator",
+    page_icon="Ⱄ",
     layout="centered"
 )
 
-# ============================================================
-# AUTO REFRESH (KLUCZ DO REALTIME)
-# ============================================================
+st.title("Proto-Slavic Translator")
+st.caption("Scientific reconstruction")
 
-st.markdown(
-    """
-    <script>
-    setTimeout(function(){
-        window.parent.document.querySelector('section.main').dispatchEvent(new Event("click"))
-    }, 300);
-    </script>
-    """,
-    unsafe_allow_html=True
+# session state
+if "last_text" not in st.session_state:
+    st.session_state.last_text = ""
+
+if "translation" not in st.session_state:
+    st.session_state.translation = ""
+
+
+# input field (auto translate)
+text = st.text_input(
+    "Polish",
+    value=st.session_state.last_text,
+    placeholder="np. usprawiedliwić",
+    label_visibility="collapsed"
 )
 
-# ============================================================
-# STYLE DEEPL
-# ============================================================
 
-st.markdown("""
-<style>
+# automatyczne tłumaczenie (bez Enter)
+if text != st.session_state.last_text:
 
-textarea {
-    background-color: #1a1d24 !important;
-    color: white !important;
-    font-size: 20px !important;
-    border-radius: 12px !important;
-}
+    st.session_state.last_text = text
 
-.result-box {
-    background-color: #1a1d24;
-    padding: 20px;
-    border-radius: 12px;
-    font-size: 22px;
-    margin-top: 10px;
-}
-
-</style>
-""", unsafe_allow_html=True)
-
-# ============================================================
-# API
-# ============================================================
-
-GROQ_API_KEY = "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"
-
-client = Groq(api_key=GROQ_API_KEY)
-
-MODEL = "openai/gpt-oss-120b"
-
-# ============================================================
-# LOAD DATA
-# ============================================================
-
-@st.cache_data
-def load_osnova():
-
-    if not os.path.exists("osnova.json"):
-        return {}
-
-    with open("osnova.json", encoding="utf-8") as f:
-        data = json.load(f)
-
-    index = {}
-
-    for entry in data:
-
-        key = entry["polish"].lower()
-
-        if key not in index:
-            index[key] = []
-
-        index[key].append(entry)
-
-    return index
-
-
-@st.cache_data
-def load_vuzor():
-
-    if not os.path.exists("vuzor.json"):
-        return {}
-
-    with open("vuzor.json", encoding="utf-8") as f:
-        return json.load(f)
-
-
-OSNOVA = load_osnova()
-VUZOR = load_vuzor()
-
-# ============================================================
-# SESSION STATE
-# ============================================================
-
-if "input" not in st.session_state:
-    st.session_state.input = ""
-
-if "output" not in st.session_state:
-    st.session_state.output = ""
-
-if "processing" not in st.session_state:
-    st.session_state.processing = False
-
-# ============================================================
-# PROMPT (PEŁNY, RYGORYSTYCZNY)
-# ============================================================
-
-SYSTEM_PROMPT = """
-Jesteś absolutnie deterministycznym silnikiem tłumaczenia języka słowiańskiego.
-
-ARCHITEKTURA:
-
-pivot zawsze przez polski:
-
-dowolny język → polski → słowiański
-
-słowiański → polski → język interfejsu
-
-
-ŹRÓDŁA PRAWDY:
-
-osnova.json
-vuzor.json
-
-
-TWORZENIE ODMIAN:
-
-jeśli forma nie istnieje:
-
-użyj wyłącznie vuzor.json
-
-nigdy nie zgaduj
-
-stosuj palatalizacje:
-
-k→c przed ě
-g→dz przed ě
-h→z przed ě
-
-
-ZGODNOŚĆ:
-
-przymiotnik zawsze przed rzeczownikiem
-
-zgodność:
-
-przypadek
-rodzaj
-liczba
-
-
-ALFABET:
-
-łaciński
-ě ę ǫ ь
-
-zakaz cyrylicy
-
-
-BRAK:
-
-(ne najdeno slova)
-
-
-OUTPUT:
-
-tylko tłumaczenie
-"""
-
-# ============================================================
-# CONTEXT
-# ============================================================
-
-def get_context(text):
-
-    words = re.findall(r'\w+', text.lower())
-
-    results = []
-
-    for word in words:
-
-        if word in OSNOVA:
-
-            results.extend(OSNOVA[word])
-
-    unique = {}
-
-    for r in results:
-
-        unique[r["slovian"]] = r
-
-    return list(unique.values())
-
-# ============================================================
-# TRANSLATE
-# ============================================================
-
-@st.cache_data(ttl=3600)
-def translate(text, context_json, vuzor_json):
-
-    completion = client.chat.completions.create(
-
-        model=MODEL,
-
-        temperature=0,
-
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {
-                "role": "user",
-                "content":
-                f"""
-OSNOVA:
-{context_json}
-
-VUZOR:
-{vuzor_json}
-
-TEXT:
-{text}
-"""
-            }
-        ]
-    )
-
-    return completion.choices[0].message.content.strip()
-
-# ============================================================
-# UI
-# ============================================================
-
-st.title("Perkladačь")
-
-user_input = st.text_area(
-    "",
-    value=st.session_state.input,
-    height=150
-)
-
-# ============================================================
-# REALTIME DETECTION
-# ============================================================
-
-if user_input != st.session_state.input and not st.session_state.processing:
-
-    st.session_state.input = user_input
-
-    st.session_state.processing = True
-
-    if user_input.strip() == "":
-
-        st.session_state.output = ""
-
-    else:
-
-        context = get_context(user_input)
-
-        context_json = json.dumps(context, ensure_ascii=False)
-
-        vuzor_json = json.dumps(VUZOR, ensure_ascii=False)
-
+    with st.spinner("Translating..."):
         try:
-
-            result = translate(
-                user_input,
-                context_json,
-                vuzor_json
-            )
-
-            st.session_state.output = result
-
+            st.session_state.translation = translate(text)
         except Exception as e:
+            st.session_state.translation = f"Error: {e}"
 
-            st.session_state.output = str(e)
 
-    st.session_state.processing = False
-
-# ============================================================
-# OUTPUT
-# ============================================================
-
-st.markdown(
-    f'<div class="result-box">{st.session_state.output}</div>',
-    unsafe_allow_html=True
+# output
+st.text_input(
+    "Proto-Slavic",
+    value=st.session_state.translation,
+    disabled=True,
+    label_visibility="collapsed"
 )
