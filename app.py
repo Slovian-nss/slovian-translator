@@ -203,7 +203,7 @@ Zwróć TYLKO czyste tłumaczenie używając alfabetu łacińskiego + ě, ę, ǫ
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": f"BAZA:\n{context_str}\n\nDO TŁUMACZENIA: {user_input}"}
                 ],
-                model="llama-3.3-70b-versatile",
+                model="groq/compound",
                 temperature=0.0
             )
 
@@ -219,3 +219,4 @@ Zwróć TYLKO czyste tłumaczenie używając alfabetu łacińskiego + ě, ę, ǫ
 
         except Exception as e:
             st.error(f"Blǫd umětьnogo uma: {e}")
+
