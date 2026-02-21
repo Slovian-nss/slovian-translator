@@ -194,7 +194,7 @@ KONKRETNE PRZYKŁADY MIEJSCOWNIKA:
 3. SYMBOLE: Zachowaj liczby, znaki matematyczne i linki bez zmian.
 4. WALIDACJA: Przed zwróceniem sprawdź, czy NIE UŻYŁEŚ cyrylicy (oprócz ь/Ь).
 
-Pokazuj tylko czysty wynik tłumaczenia (bez pokazywania kroków analizy) po przeprowadzonej analizie tłumaczenia, czyli samo tłumaczenie używając alfabetu łacińskiego + ě, ę, ǫ, ь/Ь i nic więcej."""
+Zwróć TYLKO czyste tłumaczenie używając alfabetu łacińskiego + ě, ę, ǫ, ь/Ь i nic więcej."""
 
         try:
             # Wywołanie modelu tłumaczenia
@@ -219,6 +219,7 @@ Pokazuj tylko czysty wynik tłumaczenia (bez pokazywania kroków analizy) po prz
 
         except Exception as e:
             st.error(f"Blǫd umětьnogo uma: {e}")
+
 
 
 
