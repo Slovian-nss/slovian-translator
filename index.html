@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Perkladačь slověnьskogo ęzyka (OFFLINE)</title>
+    <title>Perkladačь slověnьskogo ęzyka (Local Engine)</title>
     <style>
         body { background-color: #0e1117; color: #dcdcdc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; max-width: 800px; margin: auto; }
         .container { background-color: #1a1a1a; padding: 20px; border-radius: 10px; border: 1px solid #333; }
@@ -13,91 +13,106 @@
         #output { margin-top: 20px; padding: 15px; background-color: #050505; border: 1px solid #2e7d32; border-radius: 5px; display: none; }
         #loader { display: none; color: #888; font-size: 0.9rem; margin-top: 10px; }
         .source-box { font-size: 0.8rem; color: #777; margin-top: 15px; border-top: 1px dashed #444; padding-top: 10px; }
-        h3 { color: #2e7d32; }
     </style>
 </head>
 <body>
 <div class="container">
     <h2>Perkladačь slověnьskogo ęzyka</h2>
-    <p style="color: #888;">Vupiši slovo abo rěčenьje (Działa bez API):</p>
-    <input type="text" id="userInput" placeholder="np. Matka i ojciec...">
-    <button onclick="translateLocal()">Perloži</button>
+    <p style="color: #888;">Tryb: Pełna niezależność (Offline / No API)</p>
+    <input type="text" id="userInput" placeholder="Wpisz tekst (np. Wojsko Słowiańskie)">
+    <button onclick="runLocalTranslator()">Perloži</button>
     
-    <div id="loader">Analiza gramatyczna i przeszukiwanie bazy...</div>
+    <div id="loader">Przetwarzanie reguł gramatycznych...</div>
     <div id="output">
         <h3>Vynik perklada:</h3>
         <div id="responseText" style="font-size: 1.2rem;"></div>
-        <div id="contextData" class="source-box">Logika: Algorytm lokalny (Offline)</div>
+        <div id="contextData" class="source-box">Logika: Rygorystyczny silnik JS (No API)</div>
     </div>
 </div>
 
 <script>
     let dictionary = [];
-    let grammarRules = [];
+    let paradigms = [];
 
-    // Ładowanie baz danych przy starcie
-    async function loadDatabases() {
+    // 1. ŁADOWANIE BAZY
+    async function loadData() {
         try {
-            const resOsnova = await fetch('osnova.json');
-            dictionary = await resOsnova.json();
-            const resVuzor = await fetch('vuzor.json');
-            grammarRules = await resVuzor.json();
-            console.log("Bazy załadowane pomyślnie.");
-        } catch (e) {
-            console.error("Błąd ładowania baz danych. Upewnij się, że pliki osnova.json i vuzor.json są w tym samym folderze.", e);
-        }
+            const res1 = await fetch('osnova.json');
+            dictionary = await res1.json();
+            const res2 = await fetch('vuzor.json');
+            paradigms = await res2.json();
+        } catch (e) { console.error("Błąd plików .json", e); }
     }
 
-    function applyCase(original, translated) {
-        if (original === original.toUpperCase()) return translated.toUpperCase();
-        if (original[0] === original[0].toUpperCase()) return translated.charAt(0).toUpperCase() + translated.slice(1);
-        return translated.toLowerCase();
+    // 2. LOGIKA CASE-BY-CASE
+    function matchCase(original, target) {
+        if (original === original.toUpperCase()) return target.toUpperCase();
+        if (original[0] === original[0].toUpperCase()) return target.charAt(0).toUpperCase() + target.slice(1);
+        return target.toLowerCase();
     }
 
-    function translateLocal() {
-        const input = document.getElementById('userInput').value.trim();
-        if (!input) return;
+    // 3. SILNIK TŁUMACZĄCY
+    function runLocalTranslator() {
+        const text = document.getElementById('userInput').value.trim();
+        if (!text) return;
 
         document.getElementById('loader').style.display = "block";
-        document.getElementById('output').style.display = "none";
+        
+        let words = text.split(/\s+/);
+        let processed = [];
 
-        // Rozbicie na słowa i proste czyszczenie z interpunkcji
-        const words = input.split(/\s+/);
-        let results = [];
-
-        // Logika "Przymiotnik przed rzeczownikiem" wymaga identyfikacji części mowy
-        // Tutaj stosujemy uproszczone tłumaczenie słowo po słowie z zachowaniem wielkości liter
+        // KROK 1: Podstawowe mapowanie i zbieranie części mowy
         for (let i = 0; i < words.length; i++) {
-            let originalWord = words[i];
-            let cleanWord = originalWord.toLowerCase().replace(/[.,!?;]/g, "");
-            let punctuation = originalWord.match(/[.,!?;]/g) || "";
-
-            // Szukanie w osnova.json
-            let entry = dictionary.find(item => item.POL === cleanWord);
+            let clean = words[i].toLowerCase().replace(/[.,!?;]/g, "");
+            let punct = words[i].match(/[.,!?;]/g) || "";
+            
+            let entry = dictionary.find(e => e.POL === clean);
             
             if (entry) {
-                let translated = applyCase(cleanWord, entry.SLOV);
-                results.push(translated + punctuation);
+                processed.push({
+                    original: words[i],
+                    translated: entry.SLOV,
+                    pos: entry.POS, // Zakładam, że masz kolumnę POS w osnova.json
+                    punct: punct
+                });
             } else {
-                results.push(applyCase(originalWord, "(ne najdeno slova)") + punctuation);
+                processed.push({
+                    original: words[i],
+                    translated: "(ne najdeno slova)",
+                    pos: "unknown",
+                    punct: punct
+                });
             }
         }
 
-        // Prosta zamiana kolejności (jeśli przymiotnik był po rzeczowniku)
-        // Wymagałoby to pełnego tagowania części mowy w JSON, poniżej szkielet:
-        /* for (let i = 0; i < results.length - 1; i++) {
-             // Jeśli results[i] to rzeczownik a results[i+1] to przymiotnik -> zamień miejscami
+        // KROK 2: KRYTYCZNA ZASADA: Przymiotnik PRZED rzeczownikiem
+        // Jeśli znajdziemy układ: Rzeczownik + Przymiotnik -> Zamieniamy kolejność
+        for (let i = 0; i < processed.length - 1; i++) {
+            if (processed[i].pos === "noun" && processed[i+1].pos === "adjective") {
+                let temp = processed[i];
+                processed[i] = processed[i+1];
+                processed[i+1] = temp;
+            }
         }
-        */
 
+        // KROK 3: Rekonstrukcja tekstu i wielkości liter
+        let finalText = processed.map(item => {
+            let word = item.translated;
+            if (word !== "(ne najdeno slova)") {
+                word = matchCase(item.original, word);
+            }
+            return word + item.punct;
+        }).join(" ");
+
+        // WYŚWIETLANIE
         setTimeout(() => {
-            document.getElementById('responseText').innerText = results.join(" ");
+            document.getElementById('responseText').innerText = finalText;
             document.getElementById('loader').style.display = "none";
             document.getElementById('output').style.display = "block";
-        }, 200); // Małe opóźnienie dla efektu wizualnego
+        }, 150);
     }
 
-    loadDatabases();
+    loadData();
 </script>
 </body>
 </html>
