@@ -15,7 +15,22 @@ st.set_page_config(
 )
 
 # ============================================================
-# STYLE (DEEPL)
+# AUTO REFRESH (KLUCZ DO REALTIME)
+# ============================================================
+
+st.markdown(
+    """
+    <script>
+    setTimeout(function(){
+        window.parent.document.querySelector('section.main').dispatchEvent(new Event("click"))
+    }, 300);
+    </script>
+    """,
+    unsafe_allow_html=True
+)
+
+# ============================================================
+# STYLE DEEPL
 # ============================================================
 
 st.markdown("""
@@ -28,7 +43,7 @@ textarea {
     border-radius: 12px !important;
 }
 
-.result {
+.result-box {
     background-color: #1a1d24;
     padding: 20px;
     border-radius: 12px;
@@ -50,7 +65,7 @@ client = Groq(api_key=GROQ_API_KEY)
 MODEL = "openai/gpt-oss-120b"
 
 # ============================================================
-# CACHE LOAD
+# LOAD DATA
 # ============================================================
 
 @st.cache_data
@@ -66,12 +81,12 @@ def load_osnova():
 
     for entry in data:
 
-        pl = entry["polish"].lower()
+        key = entry["polish"].lower()
 
-        if pl not in index:
-            index[pl] = []
+        if key not in index:
+            index[key] = []
 
-        index[pl].append(entry)
+        index[key].append(entry)
 
     return index
 
@@ -90,23 +105,114 @@ OSNOVA = load_osnova()
 VUZOR = load_vuzor()
 
 # ============================================================
-# FAST CACHE RESULTS
+# SESSION STATE
+# ============================================================
+
+if "input" not in st.session_state:
+    st.session_state.input = ""
+
+if "output" not in st.session_state:
+    st.session_state.output = ""
+
+if "processing" not in st.session_state:
+    st.session_state.processing = False
+
+# ============================================================
+# PROMPT (PEŁNY, RYGORYSTYCZNY)
+# ============================================================
+
+SYSTEM_PROMPT = """
+Jesteś absolutnie deterministycznym silnikiem tłumaczenia języka słowiańskiego.
+
+ARCHITEKTURA:
+
+pivot zawsze przez polski:
+
+dowolny język → polski → słowiański
+
+słowiański → polski → język interfejsu
+
+
+ŹRÓDŁA PRAWDY:
+
+osnova.json
+vuzor.json
+
+
+TWORZENIE ODMIAN:
+
+jeśli forma nie istnieje:
+
+użyj wyłącznie vuzor.json
+
+nigdy nie zgaduj
+
+stosuj palatalizacje:
+
+k→c przed ě
+g→dz przed ě
+h→z przed ě
+
+
+ZGODNOŚĆ:
+
+przymiotnik zawsze przed rzeczownikiem
+
+zgodność:
+
+przypadek
+rodzaj
+liczba
+
+
+ALFABET:
+
+łaciński
+ě ę ǫ ь
+
+zakaz cyrylicy
+
+
+BRAK:
+
+(ne najdeno slova)
+
+
+OUTPUT:
+
+tylko tłumaczenie
+"""
+
+# ============================================================
+# CONTEXT
+# ============================================================
+
+def get_context(text):
+
+    words = re.findall(r'\w+', text.lower())
+
+    results = []
+
+    for word in words:
+
+        if word in OSNOVA:
+
+            results.extend(OSNOVA[word])
+
+    unique = {}
+
+    for r in results:
+
+        unique[r["slovian"]] = r
+
+    return list(unique.values())
+
+# ============================================================
+# TRANSLATE
 # ============================================================
 
 @st.cache_data(ttl=3600)
-def cached_translate(text, context_str, vuzor_str):
-
-    SYSTEM_PROMPT = """
-Tłumacz deterministycznie.
-
-Pivot zawsze przez polski.
-
-Używaj wyłącznie osnova.json i vuzor.json.
-
-Generuj odmiany tylko według vuzor.json.
-
-Zwróć tylko tłumaczenie.
-"""
+def translate(text, context_json, vuzor_json):
 
     completion = client.chat.completions.create(
 
@@ -118,61 +224,22 @@ Zwróć tylko tłumaczenie.
             {"role": "system", "content": SYSTEM_PROMPT},
             {
                 "role": "user",
-                "content": f"""
+                "content":
+                f"""
 OSNOVA:
-{context_str}
+{context_json}
 
 VUZOR:
-{vuzor_str}
+{vuzor_json}
 
-TEKST:
+TEXT:
 {text}
 """
             }
         ]
-
     )
 
     return completion.choices[0].message.content.strip()
-
-# ============================================================
-# FIND CONTEXT
-# ============================================================
-
-def get_context(text):
-
-    words = re.findall(r'\w+', text.lower())
-
-    found = []
-
-    for word in words:
-
-        if word in OSNOVA:
-
-            found.extend(OSNOVA[word])
-
-    unique = {}
-
-    for f in found:
-
-        unique[f["slovian"]] = f
-
-    return list(unique.values())
-
-
-# ============================================================
-# REALTIME STATE
-# ============================================================
-
-if "last" not in st.session_state:
-    st.session_state.last = ""
-
-if "result" not in st.session_state:
-    st.session_state.result = ""
-
-if "last_time" not in st.session_state:
-    st.session_state.last_time = 0
-
 
 # ============================================================
 # UI
@@ -180,62 +247,55 @@ if "last_time" not in st.session_state:
 
 st.title("Perkladačь")
 
-text = st.text_area(
+user_input = st.text_area(
     "",
-    height=150,
-    placeholder="Vupiši tekst..."
+    value=st.session_state.input,
+    height=150
 )
 
 # ============================================================
-# REALTIME ENGINE (DEBOUNCE 0.4s)
+# REALTIME DETECTION
 # ============================================================
 
-now = time.time()
+if user_input != st.session_state.input and not st.session_state.processing:
 
-changed = text != st.session_state.last
+    st.session_state.input = user_input
 
-debounce_ready = now - st.session_state.last_time > 0.4
+    st.session_state.processing = True
 
-if changed and debounce_ready:
+    if user_input.strip() == "":
 
-    st.session_state.last = text
-
-    st.session_state.last_time = now
-
-    if text.strip() == "":
-
-        st.session_state.result = ""
+        st.session_state.output = ""
 
     else:
 
-        context = get_context(text)
+        context = get_context(user_input)
 
-        context_str = "\n".join(
-            f"{c['polish']}={c['slovian']}"
-            for c in context
-        )
+        context_json = json.dumps(context, ensure_ascii=False)
 
-        vuzor_str = json.dumps(VUZOR, ensure_ascii=False)
+        vuzor_json = json.dumps(VUZOR, ensure_ascii=False)
 
         try:
 
-            result = cached_translate(
-                text,
-                context_str,
-                vuzor_str
+            result = translate(
+                user_input,
+                context_json,
+                vuzor_json
             )
 
-            st.session_state.result = result
+            st.session_state.output = result
 
         except Exception as e:
 
-            st.session_state.result = str(e)
+            st.session_state.output = str(e)
+
+    st.session_state.processing = False
 
 # ============================================================
 # OUTPUT
 # ============================================================
 
 st.markdown(
-    f'<div class="result">{st.session_state.result}</div>',
+    f'<div class="result-box">{st.session_state.output}</div>',
     unsafe_allow_html=True
 )
