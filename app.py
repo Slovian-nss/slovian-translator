@@ -203,7 +203,7 @@ Pokazuj tylko czysty wynik tłumaczenia (bez pokazywania kroków analizy) po prz
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": f"BAZA:\n{context_str}\n\nDO TŁUMACZENIA: {user_input}"}
                 ],
-                model="llama 3.1 8b-instant",
+                model="llama-3.3-70b-versatile",
                 temperature=0.0
             )
 
@@ -219,6 +219,7 @@ Pokazuj tylko czysty wynik tłumaczenia (bez pokazywania kroków analizy) po prz
 
         except Exception as e:
             st.error(f"Blǫd umětьnogo uma: {e}")
+
 
 
 
