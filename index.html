@@ -1,109 +1,117 @@
 <!DOCTYPE html>
-<html lang="sl">
+<html lang="pl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Perkladačь slověnьskogo ęzyka</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background-color: #0e1117; color: #dcdcdc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; max-width: 800px; margin: auto; }
-        .container { background-color: #1a1a1a; padding: 20px; border-radius: 10px; border: 1px solid #333; }
-        input { width: 100%; padding: 12px; background: #000; border: 1px solid #444; color: white; border-radius: 5px; margin-bottom: 10px; box-sizing: border-box; }
-        button { background-color: #2e7d32; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; width: 100%; font-weight: bold; }
-        button:hover { background-color: #388e3c; }
-        #output { margin-top: 20px; padding: 15px; background-color: #050505; border: 1px solid #2e7d32; border-radius: 5px; display: none; }
-        #status { color: #888; font-size: 0.8rem; margin-bottom: 10px; }
+        body { font-family: system-ui, sans-serif; }
+        .tail-container { max-width: 640px; margin: 0 auto; padding: 20px; }
     </style>
 </head>
-<body>
-<div class="container">
-    <h2>Perkladačь slověnьskogo ęzyka</h2>
-    <div id="status">Wczytywanie...</div>
-    <input type="text" id="userInput" placeholder="np. Wojsko Słowiańskie">
-    <button onclick="translateLocal()">Perloži</button>
-    
-    <div id="output">
-        <h3 style="color: #2e7d32;">Vynik perklada:</h3>
-        <div id="responseText" style="font-size: 1.3rem;"></div>
+<body class="bg-zinc-950 text-zinc-100 min-h-screen">
+    <div class="tail-container">
+        <h1 class="text-3xl font-bold text-center mb-6">Perkladačь slověnьskogo ęzyka</h1>
+        
+        <input id="input" 
+               class="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-5 py-4 text-lg focus:outline-none focus:border-emerald-600"
+               placeholder="Vupiši slovo abo rěčenьje:" 
+               onkeydown="if(event.key==='Enter') translate()">
+        
+        <button onclick="translate()" 
+                class="mt-4 w-full bg-emerald-600 hover:bg-emerald-700 py-4 rounded-xl font-medium text-lg">
+            Perkladni
+        </button>
+
+        <div id="result" class="mt-8 hidden bg-zinc-900 border border-emerald-900 rounded-2xl p-6 text-xl leading-relaxed"></div>
+
+        <details id="sources" class="mt-6 hidden">
+            <summary class="cursor-pointer text-emerald-400 font-medium mb-2">Užito žerdlo jiz osnovy</summary>
+            <div id="sources-list" class="text-sm text-zinc-400 space-y-1"></div>
+        </details>
     </div>
-</div>
 
-<script>
-    let dictionary = [];
+    <script>
+        let dictIndex = {};
+        fetch('osnova.json').then(r => r.json()).then(data => {
+            data.forEach(entry => {
+                let pl = (entry.polish || '').toLowerCase().trim();
+                if (pl) {
+                    if (!dictIndex[pl]) dictIndex[pl] = [];
+                    dictIndex[pl].push(entry);
+                }
+            });
+        });
 
-    async function init() {
-        try {
-            const res = await fetch('osnova.json');
-            dictionary = await res.json();
-            // Czyścimy bazę na starcie (usuwamy zbędne spacje)
-            dictionary = dictionary.map(e => ({
-                pol: String(e.POL || e.pol || "").trim().toLowerCase(),
-                slov: String(e.SLOV || e.slov || "").trim(),
-                pos: String(e.POS || e.pos || "").trim().toLowerCase()
-            }));
-            document.getElementById('status').innerText = "Baza gotowa (Offline)";
-        } catch (e) {
-            document.getElementById('status').innerText = "Błąd krytyczny plików!";
+        function escapeRegExp(str) {
+            return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         }
-    }
 
-    function matchCase(original, target) {
-        if (original === original.toUpperCase()) return target.toUpperCase();
-        if (original[0] === original[0].toUpperCase()) return target[0].toUpperCase() + target.slice(1);
-        return target.toLowerCase();
-    }
+        function getRelevant(text) {
+            let clean = text.toLowerCase().replace(/[^\w\s]/g, '');
+            let words = clean.split(/\s+/).filter(w => w.length > 0);
+            let entries = [];
+            words.forEach(w => {
+                if (dictIndex[w]) entries.push(...dictIndex[w]);
+                else if (w.length > 3) {
+                    for (let k in dictIndex) {
+                        if (k.startsWith(w.slice(0,4)) && k.length > 3) {
+                            entries.push(...dictIndex[k]);
+                        }
+                    }
+                }
+            });
+            let seen = new Set();
+            let unique = [];
+            entries.forEach(e => {
+                let id = e.slovian + '|' + (e['type and case'] || '');
+                if (!seen.has(id)) {
+                    seen.add(id);
+                    unique.push(e);
+                }
+            });
+            return unique.slice(0, 40);
+        }
 
-    // Rygorystyczna palatalizacja wg promptu (k->c, g->dz przed ě)
-    function applyPalatalization(word) {
-        if (word.endsWith('kě')) return word.slice(0, -2) + 'cě';
-        if (word.endsWith('gě')) return word.slice(0, -2) + 'dzě';
-        return word;
-    }
+        function translate() {
+            let input = document.getElementById('input').value.trim();
+            if (!input) return;
 
-    function translateLocal() {
-        const input = document.getElementById('userInput').value.trim();
-        if (!input) return;
+            let matches = getRelevant(input);
+            let result = input;
 
-        let words = input.split(/\s+/);
-        let results = [];
+            matches.forEach(m => {
+                let plLower = (m.polish || '').toLowerCase();
+                let sl = (m.slovian || '').toLowerCase();
+                let regex = new RegExp('\\b' + escapeRegExp(plLower) + '\\b', 'gi');
+                result = result.replace(regex, match => {
+                    if (match === match.toUpperCase()) return sl.toUpperCase();
+                    if (match[0] === match[0].toUpperCase()) return sl[0].toUpperCase() + sl.slice(1);
+                    return sl;
+                });
+            });
 
-        for (let word of words) {
-            let cleanPol = word.toLowerCase().replace(/[.,!?;]/g, "").trim();
-            let punct = word.match(/[.,!?;]/g) || "";
-            
-            // Szukanie z rygorystycznym trimowaniem
-            let entry = dictionary.find(e => e.pol === cleanPol);
-            
-            if (entry) {
-                let slovak = applyPalatalization(entry.slov);
-                results.push({
-                    text: matchCase(cleanPol, slovak),
-                    pos: entry.pos,
-                    punct: punct,
-                    original: word
+            if (matches.length === 0) result = "(ne najdeno slova)";
+
+            let resDiv = document.getElementById('result');
+            resDiv.innerHTML = `<strong class="text-emerald-400">Vynik perklada:</strong><br>${result}`;
+            resDiv.classList.remove('hidden');
+
+            let srcDiv = document.getElementById('sources');
+            let list = document.getElementById('sources-list');
+            list.innerHTML = '';
+            if (matches.length > 0) {
+                srcDiv.classList.remove('hidden');
+                matches.forEach(m => {
+                    let li = document.createElement('div');
+                    li.innerHTML = `<strong>${m.polish}</strong> → <code class="text-emerald-300">${m.slovian}</code> <span class="text-xs">(${m['type and case'] || ''})</span>`;
+                    list.appendChild(li);
                 });
             } else {
-                results.push({ text: matchCase(word, "(ne najdeno slova)"), pos: "", punct: punct });
+                srcDiv.classList.add('hidden');
             }
         }
-
-        // KRYTYCZNY SZYK: Przymiotnik PRZED rzeczownik
-        for (let i = 0; i < results.length - 1; i++) {
-            if (results[i].pos === "noun" && results[i+1].pos === "adjective") {
-                let temp = results[i];
-                results[i] = results[i+1];
-                results[i+1] = temp;
-                // Zamiana interpunkcji
-                let p = results[i].punct;
-                results[i].punct = results[i+1].punct;
-                results[i+1].punct = p;
-            }
-        }
-
-        document.getElementById('responseText').innerText = results.map(r => r.text + r.punct).join(" ");
-        document.getElementById('output').style.display = "block";
-    }
-
-    init();
-</script>
+    </script>
 </body>
 </html>
