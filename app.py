@@ -4,142 +4,122 @@ import os
 import re
 
 # ============================================================
-# 1. KONFIGURACJA I STYLIZACJA
+# 1. KONFIGURACJA
 # ============================================================
 st.set_page_config(page_title="Perkladačь slověnьskogo ęzyka", layout="centered")
 
-st.markdown("""
-    <style>
-    .main { background-color: #0e1117; }
-    .stTextInput > div > div > input { background-color: #1a1a1a; color: #dcdcdc; border: 1px solid #333; }
-    .stSuccess { background-color: #050505; border: 1px solid #2e7d32; color: #dcdcdc; font-size: 1.2rem; }
-    .stCaption { color: #888; }
-    </style>
-    """, unsafe_allow_html=True)
-
-# ============================================================
-# 2. ŁADOWANIE BAZY DANYCH (LOKALNE)
-# ============================================================
 @st.cache_data
-def load_data():
-    def load_file(name):
-        if os.path.exists(name):
-            with open(name, "r", encoding="utf-8") as f:
+def load_all_data():
+    def load_json(path):
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as f:
                 return json.load(f)
         return []
+    return load_json("osnova.json"), load_json("vuzor.json")
 
-    osnova = load_file("osnova.json")
-    vuzor = load_file("vuzor.json")
-    
-    # Tworzymy szybki indeks wyszukiwania
-    index = {}
+osnova, vuzory = load_all_data()
+
+# ============================================================
+# 2. SILNIK LINGWISTYCZNY (LOGIKA TWARDA)
+# ============================================================
+
+def apply_palatalization(word):
+    """Realizuje zasadę: k > c, g > dz, h > z przed 'ě'."""
+    if word.endswith("gě"): return word[:-2] + "dzě"
+    if word.endswith("kě"): return word[:-2] + "cě"
+    if word.endswith("hě"): return word[:-2] + "zě"
+    return word
+
+def get_word_metadata(polish_word):
+    """Szuka słowa w osnova.json i zwraca pełny obiekt."""
+    search_word = polish_word.lower().strip()
+    # Szukanie dokładne
     for entry in osnova:
-        pl = entry.get("polish", "").lower().strip()
-        if pl:
-            if pl not in index: index[pl] = []
-            index[pl].append(entry)
-            
-    return index, vuzor
+        if entry.get("polish", "").lower() == search_word:
+            return entry
+    return None
 
-dictionary, vuzory = load_data()
+def fix_case(original, target):
+    """Zachowuje wielkość liter."""
+    if original.isupper(): return target.upper()
+    if original[0].isupper(): return target.capitalize()
+    return target.lower()
 
 # ============================================================
-# 3. LOKALNY SILNIK LOGIKI (Zastępuje AI)
+# 3. PROCES TŁUMACZENIA (PIPELINE)
 # ============================================================
 
-def match_case(original, translated):
-    """Zachowuje styl wielkości liter (Mati, MATI, mati)."""
-    if original.isupper():
-        return translated.upper()
-    if original[0].isupper():
-        return translated.capitalize()
-    return translated.lower()
+def translate_sentence(sentence):
+    # 1. Rozbijanie na słowa i znaki interpunkcyjne
+    tokens = re.findall(r"[\w']+|[.,!?;]", sentence)
+    processed_tokens = []
 
-def apply_grammar_rules(words_with_meta):
-    """
-    Realizuje krytyczną zasadę: Przymiotnik ZAWSZE przed rzeczownikiem.
-    Oraz łączenie słów w zdanie.
-    """
-    result = []
-    i = 0
-    n = len(words_with_meta)
-    
-    while i < n:
-        current = words_with_meta[i]
-        
-        # Sprawdź czy to rzeczownik i czy następny to przymiotnik (do zamiany)
-        if i + 1 < n:
-            next_word = words_with_meta[i+1]
-            is_curr_noun = "noun" in current['type'].lower()
-            is_next_adj = "adjective" in next_word['type'].lower() or "pridavьnik" in next_word['type'].lower()
-            
-            if is_curr_noun and is_next_adj:
-                # Zamiana miejscami
-                result.append(next_word['word'])
-                result.append(current['word'])
-                i += 2
-                continue
-        
-        result.append(current['word'])
-        i += 1
-    
-    return " ".join(result)
-
-def translate_local(text, dic):
-    """Główna funkcja tłumacząca bez API."""
-    # Czyszczenie i podział na słowa (zachowując interpunkcję w uproszczeniu)
-    input_words = re.findall(r"[\w']+|[.,!?;]", text)
-    translated_meta = []
-
-    for word in input_words:
-        if re.match(r"[.,!?;]", word):
-            translated_meta.append({'word': word, 'type': 'punct'})
+    # 2. Mapowanie słów na dane z bazy
+    for token in tokens:
+        if re.match(r"[.,!?;]", token):
+            processed_tokens.append({"word": token, "type": "punct", "orig": token})
             continue
-            
-        low_word = word.lower()
         
-        # 1. Szukanie w osnova.json
-        if low_word in dic:
-            entry = dic[low_word][0] # Bierzemy pierwsze dopasowanie
-            slov = entry['slovian']
-            # Usuwanie cyrylicy jeśli występuje (zgodnie z zasadą)
-            slov = re.sub(r'[а-яА-ЯёЁ]', '', slov) if slov else "(error)"
-            
-            translated_meta.append({
-                'word': match_case(word, slov),
-                'type': entry.get('type and case', 'unknown')
+        data = get_word_metadata(token)
+        if data:
+            slov = data['slovian']
+            # Usuń cyrylicę jeśli została w bazie
+            slov = re.sub(r'[а-яА-ЯёЁ]', '', slov)
+            processed_tokens.append({
+                "word": slov,
+                "type": data.get("type and case", "").lower(),
+                "orig": token
             })
         else:
-            # 2. Brak słowa
-            translated_meta.append({
-                'word': match_case(word, "(ne najdeno slova)"),
-                'type': 'unknown'
+            processed_tokens.append({
+                "word": "(ne najdeno slova)",
+                "type": "unknown",
+                "orig": token
             })
 
-    # 3. Zastosowanie zasad składni (Przymiotnik przed Rzeczownikiem)
-    return apply_grammar_rules(translated_meta)
+    # 3. KOREKTA: Przymiotnik przed rzeczownikiem
+    # Szukamy par: [Rzeczownik] [Przymiotnik] i zamieniamy
+    i = 0
+    while i < len(processed_tokens) - 1:
+        curr = processed_tokens[i]
+        nxt = processed_tokens[i+1]
+        
+        is_noun = "noun" in curr['type'] or "rzeczownik" in curr['type']
+        is_adj = "adj" in nxt['type'] or "pridavьnik" in nxt['type']
+        
+        if is_noun and is_adj:
+            processed_tokens[i], processed_tokens[i+1] = processed_tokens[i+1], processed_tokens[i]
+            i += 1
+        i += 1
+
+    # 4. KOREKTA: Palatalizacja (lokalna logika)
+    for tok in processed_tokens:
+        tok['word'] = apply_palatalization(tok['word'])
+
+    # 5. Składanie w całość z zachowaniem wielkości liter
+    final_words = [fix_case(t['orig'], t['word']) for t in processed_tokens]
+    
+    # Naprawa spacji przed interpunkcją
+    result = " ".join(final_words)
+    result = re.sub(r'\s+([.,!?;])', r'\1', result)
+    return result
 
 # ============================================================
-# 4. INTERFEJS UŻYTKOWNIKA
+# 4. INTERFEJS
 # ============================================================
 st.title("Perkladačь slověnьskogo ęzyka")
-st.caption("Tryb lokalny: Działa bez zewnętrznych serwerów i API")
+st.subheader("Lokalny silnik bez API")
 
-user_input = st.text_input("Vupiši slovo abo rěčenьje:", placeholder="np. Wojsko Słowiańskie")
+user_input = st.text_input("Wpisz tekst:", placeholder="np. Sługa Boży")
 
 if user_input:
-    with st.spinner("Prekladajǫ lokalno..."):
-        # Tłumaczenie lokalne
-        final_translation = translate_local(user_input, dictionary)
-        
-        st.markdown("### Vynik perklada:")
-        st.success(final_translation)
-        
-        # Pokazanie źródeł (opcjonalnie)
-        search_words = re.findall(r"\w+", user_input.lower())
-        relevant_matches = [dictionary[w][0] for w in search_words if w in dictionary]
-        
-        if relevant_matches:
-            with st.expander("Užito žerdlo jiz osnovy"):
-                for m in relevant_matches:
-                    st.write(f"**{m['polish']}** → `{m['slovian']}` ({m.get('type and case','')})")
+    output = translate_sentence(user_input)
+    st.markdown("### Wynik:")
+    st.success(output)
+
+    with st.expander("Szczegóły analizy gramatycznej"):
+        st.write("Skrypt wykonał następujące kroki:")
+        st.write("1. Sprawdzenie słów w `osnova.json`.")
+        st.write("2. Wykrycie części mowy (POS).")
+        st.write("3. Automatyczna zmiana szyku (Przymiotnik <-> Rzeczownik).")
+        st.write("4. Zastosowanie palatalizacji (np. g -> dz).")
