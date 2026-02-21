@@ -119,7 +119,7 @@ PRZYMIOTNIK ZAWSZE PRZED RZECZOWNIKIEM - TO JEST ABSOLUTNIE OBOWIĄZKOWE!
 ### TWORZENIE ODMIAN SŁÓW:
 1. Krok to jeśli nie ma, brakuje formy konkretnego słowa w 'osnova.json', to najpierw sprawdź, czy dokładna forma (odmiana, przypadek, liczba, rodzaj) istnieje w 'vuzor.json' dla tego samego słowa. Jeśli tak, użyj jej bezpośrednio z 'vuzor.json'.
 Jeśli nie, to rozpoznaj jaka forma tego słowa jest zadana w tłumaczeniu na przykład \"o północy\" to miejscownik, a potem znajdź w bazie w pliku osnova.json formę podstawową tego słowa, czyli \"polunotь\", uwzględniając zidentyfikowaną POS.
-2. Krok to zastosuj logikę odmian z 'vuzor.json' (analogiczne końcówki), aby stworzyć brakującą formę, która jest w tłumaczeniu, czyli w tym przykładzie \"o północy\" to \"ob polunoti\", czyli wcześniej wspomniany miejscownik, a przykłady, jak tworzyć odmiany słów masz w pliku \"vuzor.json\" i tylko tym plikiem wzoruj się, jako tworzyć gramatyczne odmiany słów i niczym innym. Bo nie możesz wymyślać sam od siebie wymyślać odmian słów, co do których nie ma przykładów co odmiany w pliku vuzor.json i pamiętaj, iże bardzo często, co masz w pliku vuzor.json litera \"k\" zamienia się często w \"c\" albo \"č\". W przypadku miejscownika (locative) dla słów kończących się na -ko lub -ka, stosuj palatalizację k > c przed ě, jak w przykładzie rěka > rěcě, więc dla vojьsko > vojьscě. Nie wprowadzaj nieuzasadnionych liter jak 'b' czy innych zmian poza przykładami. Dopasuj odmianę do zidentyfikowanej POS i kontekstu gramatycznego.
+2. Krok to zastosuj logikę odmian z 'vuzor.json' (analogiczne końcówki), to jest źródło sposobu odmian, aby stworzyć brakującą formę, która jest w tłumaczeniu, czyli w tym przykładzie \"o północy\" to \"ob polunoti\", czyli wcześniej wspomniany miejscownik, a przykłady, jak tworzyć odmiany słów masz w pliku \"vuzor.json\" i tylko tym plikiem wzoruj się, jako tworzyć gramatyczne odmiany słów i niczym innym. Bo nie możesz wymyślać sam od siebie wymyślać odmian słów, co do których nie ma przykładów co odmiany w pliku vuzor.json i pamiętaj, iże bardzo często, co masz w pliku vuzor.json litera \"k\" zamienia się często w \"c\" albo \"č\". W przypadku miejscownika (locative) dla słów kończących się na -ko lub -ka, stosuj palatalizację k > c przed ě, jak w przykładzie rěka > rěcě, więc dla vojьsko > vojьscě. Nie wprowadzaj nieuzasadnionych liter jak 'b' czy innych zmian poza przykładami. Dopasuj odmianę do zidentyfikowanej POS i kontekstu gramatycznego.
 ### KRYTYCZNE ZASADY ODMIAN PRZYMIOTNIKÓW:
 PRZYMIOTNIKI MUSZĄ MIEĆ ZGODNOŚĆ Z RZECZOWNIKAMI W RODZAJU, LICZBIE I PRZYPADKU!
 KONKRETNE PRZYKŁADY MIEJSCOWNIKA:
@@ -219,5 +219,6 @@ Zwróć TYLKO czyste tłumaczenie używając alfabetu łacińskiego + ě, ę, ǫ
 
         except Exception as e:
             st.error(f"Blǫd umětьnogo uma: {e}")
+
 
 
