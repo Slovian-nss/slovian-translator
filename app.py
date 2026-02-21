@@ -21,7 +21,7 @@ st.markdown("""
 # ============================================================
 # 2. KLUCZ API I NOWY MODEL (llama-3.3-70b-versatile)
 # ============================================================
-# Zaktualizowano model na openai/gpt-oss-120b, który zastąpił wycofany model
+# Zaktualizowano model na llama-3.3-70b-versatile, który zastąpił wycofany model
 GROQ_API_KEY = "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" 
 client = Groq(api_key=GROQ_API_KEY)
 
@@ -219,6 +219,7 @@ Zwróć TYLKO czyste tłumaczenie używając alfabetu łacińskiego + ě, ę, ǫ
 
         except Exception as e:
             st.error(f"Blǫd umětьnogo uma: {e}")
+
 
 
 
