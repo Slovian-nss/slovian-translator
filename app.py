@@ -203,7 +203,7 @@ Zwróć TYLKO czyste tłumaczenie używając alfabetu łacińskiego + ě, ę, ǫ
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": f"BAZA:\n{context_str}\n\nDO TŁUMACZENIA: {user_input}"}
                 ],
-                model="openai/gpt-oss-safeguard-20b",
+                model="openai/gpt-oss-120b",
                 temperature=0.0
             )
 
@@ -219,6 +219,7 @@ Zwróć TYLKO czyste tłumaczenie używając alfabetu łacińskiego + ě, ę, ǫ
 
         except Exception as e:
             st.error(f"Blǫd umětьnogo uma: {e}")
+
 
 
 
