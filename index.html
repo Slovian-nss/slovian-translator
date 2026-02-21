@@ -17,99 +17,89 @@
 <body>
 <div class="container">
     <h2>Perkladačь slověnьskogo ęzyka</h2>
-    <div id="status">Wczytywanie bazy danych...</div>
+    <div id="status">Wczytywanie...</div>
     <input type="text" id="userInput" placeholder="np. Wojsko Słowiańskie">
     <button onclick="translateLocal()">Perloži</button>
     
     <div id="output">
         <h3 style="color: #2e7d32;">Vynik perklada:</h3>
-        <div id="responseText" style="font-size: 1.3rem; font-weight: 500;"></div>
+        <div id="responseText" style="font-size: 1.3rem;"></div>
     </div>
 </div>
 
 <script>
     let dictionary = [];
-    let vuzory = [];
 
-    // Załadowanie danych z obsługą błędów
     async function init() {
         try {
-            const [r1, r2] = await Promise.all([
-                fetch('osnova.json').then(r => r.json()),
-                fetch('vuzor.json').then(r => r.json())
-            ]);
-            dictionary = r1;
-            vuzory = r2;
+            const res = await fetch('osnova.json');
+            dictionary = await res.json();
+            // Czyścimy bazę na starcie (usuwamy zbędne spacje)
+            dictionary = dictionary.map(e => ({
+                pol: String(e.POL || e.pol || "").trim().toLowerCase(),
+                slov: String(e.SLOV || e.slov || "").trim(),
+                pos: String(e.POS || e.pos || "").trim().toLowerCase()
+            }));
             document.getElementById('status').innerText = "Baza gotowa (Offline)";
         } catch (e) {
-            document.getElementById('status').innerText = "Błąd: Brak plików osnova.json/vuzor.json!";
-            console.error(e);
+            document.getElementById('status').innerText = "Błąd krytyczny plików!";
         }
     }
 
     function matchCase(original, target) {
         if (original === original.toUpperCase()) return target.toUpperCase();
-        if (original[0] === original[0].toUpperCase()) {
-            // Obsługa jery na końcu: Mati, nie MatI
-            return target.charAt(0).toUpperCase() + target.slice(1);
-        }
+        if (original[0] === original[0].toUpperCase()) return target[0].toUpperCase() + target.slice(1);
         return target.toLowerCase();
     }
 
-    // Funkcja palatalizacji (k > c, g > dz przed ě)
-    function palatalize(word) {
+    // Rygorystyczna palatalizacja wg promptu (k->c, g->dz przed ě)
+    function applyPalatalization(word) {
         if (word.endsWith('kě')) return word.slice(0, -2) + 'cě';
         if (word.endsWith('gě')) return word.slice(0, -2) + 'dzě';
-        if (word.endsWith('hě')) return word.slice(0, -2) + 'zě';
         return word;
     }
 
     function translateLocal() {
         const input = document.getElementById('userInput').value.trim();
-        if (!input || dictionary.length === 0) return;
+        if (!input) return;
 
         let words = input.split(/\s+/);
         let results = [];
 
-        // 1. Mapowanie słów i części mowy
         for (let word of words) {
-            let clean = word.toLowerCase().replace(/[.,!?;]/g, "");
+            let cleanPol = word.toLowerCase().replace(/[.,!?;]/g, "").trim();
             let punct = word.match(/[.,!?;]/g) || "";
             
-            // Szukamy w bazie (uwzględniając pole 'POL' lub 'pol')
-            let entry = dictionary.find(e => (e.POL || e.pol) === clean);
+            // Szukanie z rygorystycznym trimowaniem
+            let entry = dictionary.find(e => e.pol === cleanPol);
             
             if (entry) {
-                let slovak = entry.SLOV || entry.slov;
-                // Aplikujemy palatalizację jeśli to miejscownik
-                slovak = palatalize(slovak);
-                
+                let slovak = applyPalatalization(entry.slov);
                 results.push({
-                    text: matchCase(word, slovak),
-                    pos: (entry.POS || entry.pos || "").toLowerCase(),
-                    punct: punct
+                    text: matchCase(cleanPol, slovak),
+                    pos: entry.pos,
+                    punct: punct,
+                    original: word
                 });
             } else {
                 results.push({ text: matchCase(word, "(ne najdeno slova)"), pos: "", punct: punct });
             }
         }
 
-        // 2. KRYTYCZNY SZYK: Przymiotnik PRZED rzeczownik
+        // KRYTYCZNY SZYK: Przymiotnik PRZED rzeczownik
         for (let i = 0; i < results.length - 1; i++) {
             if (results[i].pos === "noun" && results[i+1].pos === "adjective") {
                 let temp = results[i];
                 results[i] = results[i+1];
                 results[i+1] = temp;
-                // Przenosimy interpunkcję za przesunięte słowo
+                // Zamiana interpunkcji
                 let p = results[i].punct;
                 results[i].punct = results[i+1].punct;
                 results[i+1].punct = p;
             }
         }
 
-        // 3. Budowanie wyniku
-        const finalStr = results.map(r => r.text + r.punct).join(" ");
-        document.getElementById('responseText').innerText = finalStr;
+        document.getElementById('responseText').innerText = results.map(r => r.text + r.punct).join(" ");
         document.getElementById('output').style.display = "block";
     }
 
