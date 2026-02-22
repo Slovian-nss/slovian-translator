@@ -393,7 +393,7 @@
     "type and case": "noun - jimenьnik: \"mǫdrostь\" | genitive - rodilьnik (kogo? čego?) | plural - munoga ličьba | type feminine (inanimate) - rodjajь ženьsky (neživotьny)",
     "context": "wisdom",
     "polish": "mądrości",
-    "slovian": "mǫdrostь"
+    "slovian": "mǫdrostьji"
   },
   {
     "type and case": "noun - jimenьnik: \"mǫdrostь\" | locative - městьnik (ob kom? ob čem? kde? vu? na? pri?) | plural - munoga ličьba | type feminine (inanimate) - rodjajь ženьsky (neživotьny)",
@@ -477,7 +477,7 @@
     "type and case": "noun - jimenьnik: \"hytrostь\" | genitive - rodilьnik (kogo? čego?) | plural - munoga ličьba | type feminine (inanimate) - rodjajь ženьsky (neživotьny)",
     "context": "cunning, slyness, craftiness",
     "polish": "chytrości",
-    "slovian": "chytrostь"
+    "slovian": "chytrostьji"
   },
   {
     "type and case": "noun - jimenьnik: \"hytrostь\" | locative - městьnik (ob kom? ob čem? kde? vu? na? pri?) | plural - munoga ličьba | type feminine (inanimate) - rodjajь ženьsky (neživotьny)",
@@ -502,6 +502,48 @@
     "context": "cunning, slyness, craftiness",
     "polish": "chytrości",
     "slovian": "chytrosti"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"ljudьje\" | nominative - jimenovьnik (koto? čьto?) | plural - munoga ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "just people who are not necessarily from the same nation",
+    "polish": "ludzie",
+    "slovian": "ljudьje"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"ljudьje\" | accusative - vinьnik (kogo? čьto?) | plural - munoga ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "just people who are not necessarily from the same nation",
+    "polish": "ludzi",
+    "slovian": "ljudi"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"ljudьje\" | genitive - rodilьnik (kogo? čego?) | plural - munoga ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "just people who are not necessarily from the same nation",
+    "polish": "ludzi",
+    "slovian": "ljudьji"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"ljudьje\" | locative - městьnik (ob kom? ob čem? kde? vu? na? pri?) | plural - munoga ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "just people who are not necessarily from the same nation",
+    "polish": "ludziach",
+    "slovian": "ljudih"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"ljudьje\" | dative - měrьnik (komu? czemu?) | plural - munoga ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "just people who are not necessarily from the same nation",
+    "polish": "ludziom",
+    "slovian": "ljudim"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"ljudьje\" | instrumental - orǫdьnik (su kymь? su čimь? su jakymь?) | plural - munoga ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "just people who are not necessarily from the same nation",
+    "polish": "ludźmi",
+    "slovian": "ljudьmi"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"ljudьje\" | vocative - zovateljь (o!) | plural - munoga ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "just people who are not necessarily from the same nation",
+    "polish": "ludzie",
+    "slovian": "ljudьje"
   },
   {
     "type and case": "noun - jimenьnik: \"dobrotь\" | nominative - jimenovьnik (koto? čьto?) | singular - poedinьna ličьba | type feminine (inanimate) - rodjajь ženьsky (neživotьny)",
@@ -551,7 +593,7 @@
   {
     "type and case": "noun - jimenьnik: \"dobrotь\" | genitive - rodilьnik (kogo? čego?) | plural - munoga ličьba | type feminine (inanimate) - rodjajь ženьsky (neživotьny)",
     "polish": "dobroci",
-    "slovian": "dobrotь"
+    "slovian": "dobrotьji"
   },
   {
     "type and case": "noun - jimenьnik: \"dobrotь\" | locative - městьnik (ob kom? ob čem? kde? vu? na? pri?) | plural - munoga ličьba | type feminine (inanimate) - rodjajь ženьsky (neživotьny)",
@@ -691,7 +733,7 @@
   {
     "type and case": "noun - jimenьnik: \"bytьje\" | genitive - rodilьnik (kogo? čego?) | plural - munoga ličьba | type neuter (inanimate) - rodjajь nijaky (neživotьny)",
     "polish": "być",
-    "slovian": "bytьj"
+    "slovian": "bytьji"
   },
   {
     "type and case": "noun - jimenьnik: \"bytьje\" | locative - městьnik (ob kom? ob čem? kde? vu? na? pri?) | plural - munoga ličьba | type neuter (inanimate) - rodjajь nijaky (neživotьny)",
@@ -4786,7 +4828,7 @@
   {
     "type and case": "noun - jimenьnik: \"pisanьje\" | genitive - rodilьnik (kogo? čego?) | plural - munoga ličьba | type neuter (inanimate) - rodjajь nijaky (neživotьny)",
     "polish": "pisań",
-    "slovian": "pisaniji"
+    "slovian": "pisanьji"
   },
   {
     "type and case": "noun - jimenьnik: \"pisanьje\" | locative - městьnik (ob kom? ob čem? kde? vu? na? pri?) | plural - munoga ličьba | type neuter (inanimate) - rodjajь nijaky (neživotьny)",
@@ -6956,7 +6998,7 @@
   {
     "type and case": "noun - jimenьnik: \"gospodь\" | genitive - rodilьnik (kogo? čego?) | plural - munoga ličьba | type masculine (animacy) - rodjajь mǫžьsky (životьny)",
     "polish": "panów",
-    "slovian": "gospodi"
+    "slovian": "gospodьji"
   },
   {
     "type and case": "noun - jimenьnik: \"gospodь\" | locative - městьnik (ob kom? ob čem? kde? vu? na? pri?) | plural - munoga ličьba | type masculine (animacy) - rodjajь mǫžьsky (životьny)",
