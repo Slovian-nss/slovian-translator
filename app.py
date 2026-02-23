@@ -2,13 +2,11 @@ import streamlit as st
 import json
 import os
 import re
-from groq import Groq
-
+import openai
 # ============================================================
 # 1. KONFIGURACJA I STYLIZACJA
 # ============================================================
 st.set_page_config(page_title="Perkladačь slověnьskogo ęzyka", layout="centered")
-
 st.markdown("""
     <style>
     .main { background-color: #0e1117; }
@@ -17,14 +15,14 @@ st.markdown("""
     .stCaption { color: #888; }
     </style>
     """, unsafe_allow_html=True)
-
 # ============================================================
-# 2. KLUCZ API I NOWY MODEL (llama-3.3-70b-versatile)
+# 2. KLUCZ API I MODEL
 # ============================================================
-# Zaktualizowano model na llama-3.3-70b-versatile, który zastąpił wycofany model
-GROQ_API_KEY = "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" 
-client = Groq(api_key=GROQ_API_KEY)
-
+OPENROUTER_API_KEY = "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"
+client = openai.OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=OPENROUTER_API_KEY
+)
 # ============================================================
 # 3. ŁADOWANIE BAZY DANYCH
 # ============================================================
@@ -45,9 +43,7 @@ def load_dictionary():
     except Exception as e:
         st.error(f"Blǫd osnovy: {e}")
         return {}
-
 dictionary = load_dictionary()
-
 # ============================================================
 # 4. INTELIGENTNA LOGIKA RAG
 # ============================================================
@@ -55,7 +51,6 @@ def get_relevant_context(text, dic):
     search_text = re.sub(r'[^\w\s]', '', text.lower())
     words = search_text.split()
     relevant_entries = []
-    
     for word in words:
         if word in dic:
             relevant_entries.extend(dic[word])
@@ -63,7 +58,6 @@ def get_relevant_context(text, dic):
             for key in dic.keys():
                 if word.startswith(key[:4]) and len(key) > 3:
                     relevant_entries.extend(dic[key])
-    
     seen = set()
     unique_entries = []
     for e in relevant_entries:
@@ -71,26 +65,19 @@ def get_relevant_context(text, dic):
         if identifier not in seen:
             seen.add(identifier)
             unique_entries.append(e)
-            
     return unique_entries[:40]
-
 # ============================================================
 # 5. INTERFEJS I PROMPT
 # ============================================================
 st.title("Perkladačь slověnьskogo ęzyka")
-
 user_input = st.text_input("Vupiši slovo abo rěčenьje:", placeholder="")
-
 if user_input:
     with st.spinner("Orzmyslь nad čęstьmi ęzyka i perklad..."):
         matches = get_relevant_context(user_input, dictionary)
-        
-        # Przygotowanie kontekstu tak, by AI widziało Mati i ogordě jako jedyne opcje
         context_str = "\n".join([
             f"- POLSKIE: {m['polish']} | UŻYJ FORMY: {m['slovian']} | GRAMATYKA: {m.get('type and case','')}"
             for m in matches
         ])
-
         system_prompt = """Jesteś rygorystycznym silnikiem tłumaczącym z języka polskiego na język prasłowiański.
 Twoim jedynym źródłem prawdy jest dostarczona BAZA WIEDZY (osnova.json).
 ### KRYTYCZNA ZASADA ORTOGRAFI I INNYCH JĘZYKOWYCH BŁĘDÓW:
@@ -127,7 +114,6 @@ KONKRETNE PRZYKŁADY MIEJSCOWNIKA:
    - \"w bożym\" = \"vu božemь\" (przymiotnik męski locative singular: rdzeń božь + końcówka -emь)
    - \"słudze\" = \"sludzě\" (rzeczownik męski locative singular: sluga > sludzě, g>dz przed ě)
    - KOLEJNOŚĆ: przymiotnik (božemь) PRZED rzeczownikiem (sludzě)
-
 2. \"Siła jest w prawdzie bożej\" = \"Sila estь vu božeji pravьdě\"
    - \"w bożej prawdzie\" = \"vu božeji pravьdě\" (NIE \"pravьdě božej\"!)
    - \"božej\" (polski) → \"božeji\" (słowiański, przymiotnik żeński locative singular)
@@ -193,35 +179,22 @@ KONKRETNE PRZYKŁADY MIEJSCOWNIKA:
    - Jeśli widzisz słowo w cyrylicy w bazie, MUSISZ je przetransponować na łacinę
 3. SYMBOLE: Zachowaj liczby, znaki matematyczne i linki bez zmian.
 4. WALIDACJA: Przed zwróceniem sprawdź, czy NIE UŻYŁEŚ cyrylicy (oprócz ь/Ь).
-
 Zwróć TYLKO czyste tłumaczenie używając alfabetu łacińskiego + ě, ę, ǫ, ь/Ь i nic więcej oraz zwracaj uwagę na wielkość liter, interpunktację i znaki matematyczne, aby były odwzorowane w tłumaczeniu."""
-
         try:
-            # Wywołanie modelu tłumaczenia
             chat_completion = client.chat.completions.create(
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": f"BAZA:\n{context_str}\n\nDO TŁUMACZENIA: {user_input}"}
                 ],
-                model="openai/gpt-oss-120b",
+                model="openai/gpt-5.2-pro",
                 temperature=0.0
             )
-
             response_text = chat_completion.choices[0].message.content.strip()
-
             st.markdown("### Vynik perklada:")
             st.success(response_text)
-
             if matches:
                 with st.expander("Užito žerdlo jiz osnovy"):
                     for m in matches:
                         st.write(f"**{m['polish']}** → `{m['slovian']}` ({m.get('type and case','')})")
-
         except Exception as e:
             st.error(f"Blǫd umětьnogo uma: {e}")
-
-
-
-
-
-
