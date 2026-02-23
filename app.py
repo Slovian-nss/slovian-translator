@@ -187,7 +187,7 @@ KONKRETNE PRZYKŁADY MIEJSCOWNIKA:
    - Jeśli widzisz słowo w cyrylicy w bazie, MUSISZ je przetransponować na łacinę
 3. SYMBOLE: Zachowaj liczby, znaki matematyczne i linki bez zmian.
 4. WALIDACJA: Przed zwróceniem sprawdź, czy NIE UŻYŁEŚ cyrylicy (oprócz ь/Ь).
-Zwróć TYLKO czyste tłumaczenie używając alfabetu łacińskiego + ě, ę, ǫ, ь/Ь i nic więcej oraz zwracaj uwagę na wielkość liter, interpunktację i znaki matematyczne, aby były odwzorowane w tłumaczeniu."""
+Zwróć TYLKO czyste tłumaczenie używając alfabetu łacińskiego + ě, ę, ǫ, ь/Ь i nic więcej oraz zwracaj uwagę na wielkość liter, interpunktację i znaki matematyczne, aby były odwzorowane w tłumaczeniu i nie możesz halucynować, zmyślać czegoś, czego nie ma w plikach osnova.json i vuzor.json."""
         try:
             chat_completion = client.chat.completions.create(
                 messages=[
@@ -206,4 +206,5 @@ Zwróć TYLKO czyste tłumaczenie używając alfabetu łacińskiego + ě, ę, ǫ
                         st.write(f"**{m['polish']}** → `{m['slovian']}` ({m.get('type and case','')})")
         except Exception as e:
             st.error(f"Blǫd umětьnogo uma: {e}")
+
 
