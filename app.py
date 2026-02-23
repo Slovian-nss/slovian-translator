@@ -194,7 +194,7 @@ Zwróć TYLKO czyste tłumaczenie używając alfabetu łacińskiego + ě, ę, ǫ
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": f"BAZA:\n{context_str}\n\nDO TŁUMACZENIA: {user_input}"}
                 ],
-                model="meta-llama/llama-3.3-70b-instruct:free",
+                model="google/gemini-2.0-flash-001",
                 temperature=0.0
             )
             response_text = chat_completion.choices[0].message.content.strip()
@@ -206,6 +206,7 @@ Zwróć TYLKO czyste tłumaczenie używając alfabetu łacińskiego + ě, ę, ǫ
                         st.write(f"**{m['polish']}** → `{m['slovian']}` ({m.get('type and case','')})")
         except Exception as e:
             st.error(f"Blǫd umětьnogo uma: {e}")
+
 
 
 
