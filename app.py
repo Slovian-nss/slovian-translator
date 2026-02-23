@@ -3,6 +3,10 @@ import json
 import os
 import re
 import openai
+from dotenv import load_dotenv
+
+load_dotenv()
+
 # ============================================================
 # 1. KONFIGURACJA I STYLIZACJA
 # ============================================================
@@ -15,14 +19,16 @@ st.markdown("""
     .stCaption { color: #888; }
     </style>
     """, unsafe_allow_html=True)
+
 # ============================================================
 # 2. KLUCZ API I MODEL
 # ============================================================
-OPENROUTER_API_KEY = "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"
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 client = openai.OpenAI(
     base_url="https://openrouter.ai/api/v1",
     api_key=OPENROUTER_API_KEY
 )
+
 # ============================================================
 # 3. ŁADOWANIE BAZY DANYCH
 # ============================================================
@@ -44,6 +50,7 @@ def load_dictionary():
         st.error(f"Blǫd osnovy: {e}")
         return {}
 dictionary = load_dictionary()
+
 # ============================================================
 # 4. INTELIGENTNA LOGIKA RAG
 # ============================================================
@@ -66,6 +73,7 @@ def get_relevant_context(text, dic):
             seen.add(identifier)
             unique_entries.append(e)
     return unique_entries[:40]
+
 # ============================================================
 # 5. INTERFEJS I PROMPT
 # ============================================================
