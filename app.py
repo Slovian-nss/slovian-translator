@@ -210,3 +210,4 @@ Zwróć TYLKO czyste tłumaczenie używając alfabetu łacińskiego + ě, ę, ǫ
 
 
 
+
