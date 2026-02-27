@@ -504,48 +504,6 @@
     "slovian": "chytrosti"
   },
   {
-    "type and case": "noun - jimenьnik: \"ljudьje\" | nominative - jimenovьnik (koto? čьto?) | plural - munoga ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
-    "context": "just people who are not necessarily from the same nation",
-    "polish": "ludzie",
-    "slovian": "ljudьje"
-  },
-  {
-    "type and case": "noun - jimenьnik: \"ljudьje\" | accusative - vinьnik (kogo? čьto?) | plural - munoga ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
-    "context": "just people who are not necessarily from the same nation",
-    "polish": "ludzi",
-    "slovian": "ljudi"
-  },
-  {
-    "type and case": "noun - jimenьnik: \"ljudьje\" | genitive - rodilьnik (kogo? čego?) | plural - munoga ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
-    "context": "just people who are not necessarily from the same nation",
-    "polish": "ludzi",
-    "slovian": "ljudьji"
-  },
-  {
-    "type and case": "noun - jimenьnik: \"ljudьje\" | locative - městьnik (ob kom? ob čem? kude? vu? na? pri?) | plural - munoga ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
-    "context": "just people who are not necessarily from the same nation",
-    "polish": "ludziach",
-    "slovian": "ljudih"
-  },
-  {
-    "type and case": "noun - jimenьnik: \"ljudьje\" | dative - měrьnik (komu? czemu?) | plural - munoga ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
-    "context": "just people who are not necessarily from the same nation",
-    "polish": "ludziom",
-    "slovian": "ljudim"
-  },
-  {
-    "type and case": "noun - jimenьnik: \"ljudьje\" | instrumental - orǫdьnik (su kymь? su čimь? su jakymь?) | plural - munoga ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
-    "context": "just people who are not necessarily from the same nation",
-    "polish": "ludźmi",
-    "slovian": "ljudьmi"
-  },
-  {
-    "type and case": "noun - jimenьnik: \"ljudьje\" | vocative - zovateljь (o!) | plural - munoga ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
-    "context": "just people who are not necessarily from the same nation",
-    "polish": "ludzie",
-    "slovian": "ljudьje"
-  },
-  {
     "type and case": "noun - jimenьnik: \"dobrotь\" | nominative - jimenovьnik (koto? čьto?) | singular - poedinьna ličьba | type feminine (inanimate) - rodjajь ženьsky (neživotьny)",
     "polish": "dobroć",
     "slovian": "dobrotь"
@@ -2297,71 +2255,85 @@
   },
   {
     "type and case": "noun - jimenьnik: \"edinak\" | nominative - jimenovьnik (koto? čьto?) | singular - poedinьna ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "only child (child without any siblings)",
     "polish": "jedynak",
     "slovian": "edinak"
   },
   {
     "type and case": "noun - jimenьnik: \"edinak\" | accusative - vinьnik (kogo? čьto?) | singular - poedinьna ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "only child (child without any siblings)",
     "polish": "jedynaka",
     "slovian": "edinaka"
   },
   {
     "type and case": "noun - jimenьnik: \"edinak\" | genitive - rodilьnik (kogo? čego?) | singular - poedinьna ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "only child (child without any siblings)",
     "polish": "jedynaka",
     "slovian": "edinaka"
   },
   {
     "type and case": "noun - jimenьnik: \"edinak\" | locative - městьnik (ob kom? ob čem? kude? vu? na? pri?) | singular - poedinьna ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "only child (child without any siblings)",
     "polish": "jedynaku",
     "slovian": "edinacě"
   },
   {
     "type and case": "noun - jimenьnik: \"edinak\" | dative - měrьnik (komu? čemu?) | singular - poedinьna ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "only child (child without any siblings)",
     "polish": "jedynakowi",
     "slovian": "edinaku"
   },
   {
     "type and case": "noun - jimenьnik: \"edinak\" | instrumental - orǫdьnik (su kymь? su čimь? su jakymь?) | singular - poedinьna ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "only child (child without any siblings)",
     "polish": "jedynakiem",
     "slovian": "edinakomь"
   },
   {
     "type and case": "noun - jimenьnik: \"edinak\" | vocative - zovanьnik (o!) | singular - poedinьna ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "only child (child without any siblings)",
     "polish": "jedynaku",
     "slovian": "edinače"
   },
   {
     "type and case": "noun - jimenьnik: \"edinak\" | nominative - jimenovьnik (koto? čьto?) | plural - munoga ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "only child (child without any siblings)",
     "polish": "jedynacy",
     "slovian": "edinaci"
   },
   {
     "type and case": "noun - jimenьnik: \"edinak\" | accusative - vinьnik (kogo? čьto?) | plural - munoga ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "only child (child without any siblings)",
     "polish": "jedynaków",
     "slovian": "edinaky"
   },
   {
     "type and case": "noun - jimenьnik: \"edinak\" | genitive - rodilьnik (kogo? čego?) | plural - munoga ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "only child (child without any siblings)",
     "polish": "jedynaków",
     "slovian": "edinak"
   },
   {
     "type and case": "noun - jimenьnik: \"edinak\" | locative - městьnik (ob kom? ob čem? kude? vu? na? pri?) | plural - munoga ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "only child (child without any siblings)",
     "polish": "jedynakach",
     "slovian": "edinacěh"
   },
   {
     "type and case": "noun - jimenьnik: \"edinak\" | dative - měrьnik (komu? čemu?) | plural - munoga ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "only child (child without any siblings)",
     "polish": "jedynakom",
     "slovian": "edinakom"
   },
   {
     "type and case": "noun - jimenьnik: \"edinak\" | instrumental - orǫdьnik (su kymь? su čimь? su jakymь?) | plural - munoga ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "only child (child without any siblings)",
     "polish": "jedynakami",
     "slovian": "edinaky"
   },
   {
     "type and case": "noun - jimenьnik: \"edinak\" | vocative - zovanьnik (o!) | plural - munoga ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "only child (child without any siblings)",
     "polish": "jedynacy",
     "slovian": "edinaci"
   },
@@ -11040,43 +11012,43 @@
   },
   {
     "type and case": "noun - jimenьnik: \"baba\" | nominative - jimenovьnik (koto? čьto?) | singular - poedinьna ličьba | type feminine (animacy) - rodjajь ženьsky (životьny)",
-    "context": "old women",
+    "context": "old woman",
     "polish": "baba",
     "slovian": "baba"
   },
   {
     "type and case": "noun - jimenьnik: \"baba\" | accusative - vinьnik (kogo? čьto?) | singular - poedinьna ličьba | type feminine (animacy) - rodjajь ženьsky (životьny)",
-    "context": "old women",
+    "context": "old woman",
     "polish": "babę",
     "slovian": "babǫ"
   },
   {
     "type and case": "noun - jimenьnik: \"baba\" | genitive - rodilьnik (kogo? čego?) | singular - poedinьna ličьba | type feminine (animacy) - rodjajь ženьsky (životьny)",
-    "context": "old women",
+    "context": "old woman",
     "polish": "baby",
     "slovian": "baby"
   },
   {
     "type and case": "noun - jimenьnik: \"baba\" | locative - městьnik (ob kom? ob čem? kude? vu? na? pri?) | singular - poedinьna ličьba | type feminine (animacy) - rodjajь ženьsky (životьny)",
-    "context": "old women",
+    "context": "old woman",
     "polish": "babie",
     "slovian": "babě"
   },
   {
     "type and case": "noun - jimenьnik: \"baba\" | dative - měrьnik (komu? čemu?) | singular - poedinьna ličьba | type feminine (animacy) - rodjajь ženьsky (životьny)",
-    "context": "old women",
+    "context": "old woman",
     "polish": "babie",
     "slovian": "babě"
   },
   {
     "type and case": "noun - jimenьnik: \"baba\" | instrumental - orǫdьnik (su kymь? su čimь? su jakymь?) | singular - poedinьna ličьba | type feminine (animacy) - rodjajь ženьsky (životьny)",
-    "context": "old women",
+    "context": "old woman",
     "polish": "babą",
     "slovian": "babojǫ"
   },
   {
     "type and case": "noun - jimenьnik: \"baba\" | vocative - zovanьnik (o!) | singular - poedinьna ličьba | type feminine (animacy) - rodjajь ženьsky (životьny)",
-    "context": "old women",
+    "context": "old woman",
     "polish": "babo",
     "slovian": "babo"
   },
@@ -11121,6 +11093,258 @@
     "context": "old women",
     "polish": "baby",
     "slovian": "baby"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"pis\" | nominative - jimenovьnik (koto? čьto?) | singular - poedinьna ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "dog",
+    "polish": "pies",
+    "slovian": "pis"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"pis\" | accusative - vinьnik (kogo? čьto?) | singular - poedinьna ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "dog",
+    "polish": "psa",
+    "slovian": "pьsa"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"pis\" | genitive - rodilьnik (kogo? čego?) | singular - poedinьna ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "dog",
+    "polish": "psa",
+    "slovian": "pьsa"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"pis\" | locative - městьnik (ob kom? ob čem? kude? vu? na? pri?) | singular - poedinьna ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "dog",
+    "polish": "psu",
+    "slovian": "pьsě"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"pis\" | dative - měrьnik (komu? čemu?) | singular - poedinьna ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "dog",
+    "polish": "psu",
+    "slovian": "pьsu"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"pis\" | instrumental - orǫdьnik (su kymь? su čimь? su jakymь?) | singular - poedinьna ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "dog",
+    "polish": "psem",
+    "slovian": "pьsomь"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"pis\" | vocative - zovanьnik (o!) | singular - poedinьna ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "dog",
+    "polish": "psie",
+    "slovian": "pьse"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"pis\" | nominative - jimenovьnik (koto? čьto?) | plural - munoga ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "dogs",
+    "polish": "psy",
+    "slovian": "pьsi"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"pis\" | accusative - vinьnik (kogo? čьto?) | plural - munoga ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "dogs",
+    "polish": "psy",
+    "slovian": "pьsy"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"pis\" | genitive - rodilьnik (kogo? čego?) | plural - munoga ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "dogs",
+    "polish": "psów",
+    "slovian": "pis"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"pis\" | locative - městьnik (ob kom? ob čem? kude? vu? na? pri?) | plural - munoga ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "dogs",
+    "polish": "psach",
+    "slovian": "pьsěh"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"pis\" | dative - měrьnik (komu? čemu?) | plural - munoga ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "dogs",
+    "polish": "psom",
+    "slovian": "pьsom"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"pis\" | instrumental - orǫdьnik (su kymь? su čimь? su jakymь?) | plural - munoga ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "dogs",
+    "polish": "psami",
+    "slovian": "pьsy"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"pis\" | vocative - zovanьnik (o!) | plural - munoga ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "dogs",
+    "polish": "psy",
+    "slovian": "pьsi"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"šiv\" | nominative - jimenovьnik (koto? čьto?) | singular - poedinьna ličьba | type masculine (inanimate) - rodjajь mǫžьsky (neživotьny)",
+    "context": "seam",
+    "polish": "szew",
+    "slovian": "šiv"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"šiv\" | accusative - vinьnik (kogo? čьto?) | singular - poedinьna ličьba | type masculine (inanimate) - rodjajь mǫžьsky (neživotьny)",
+    "context": "seam",
+    "polish": "szew",
+    "slovian": "šiv"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"šiv\" | genitive - rodilьnik (kogo? čego?) | singular - poedinьna ličьba | type masculine (inanimate) - rodjajь mǫžьsky (neživotьny)",
+    "context": "seam",
+    "polish": "szwa",
+    "slovian": "šьva"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"šiv\" | locative - městьnik (ob kom? ob čem? kude? vu? na? pri?) | singular - poedinьna ličьba | type masculine (inanimate) - rodjajь mǫžьsky (neživotьny)",
+    "context": "seam",
+    "polish": "szwie",
+    "slovian": "šьvě"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"šiv\" | dative - měrьnik (komu? čemu?) | singular - poedinьna ličьba | type masculine (inanimate) - rodjajь mǫžьsky (neživotьny)",
+    "context": "seam",
+    "polish": "szwu",
+    "slovian": "šьvu"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"šiv\" | instrumental - orǫdьnik (su kymь? su čimь? su jakymь?) | singular - poedinьna ličьba | type masculine (inanimate) - rodjajь mǫžьsky (neživotьny)",
+    "context": "seam",
+    "polish": "szwem",
+    "slovian": "šьvomь"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"šiv\" | vocative - zovanьnik (o!) | singular - poedinьna ličьba | type masculine (inanimate) - rodjajь mǫžьsky (neživotьny)",
+    "context": "seam",
+    "polish": "szwie",
+    "slovian": "šьve"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"šiv\" | nominative - jimenovьnik (koto? čьto?) | plural - munoga ličьba | type masculine (inanimate) - rodjajь mǫžьsky (neživotьny)",
+    "context": "seams",
+    "polish": "szwy",
+    "slovian": "šьvi"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"šiv\" | accusative - vinьnik (kogo? čьto?) | plural - munoga ličьba | type masculine (inanimate) - rodjajь mǫžьsky (neživotьny)",
+    "context": "seams",
+    "polish": "szwy",
+    "slovian": "šьvy"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"šiv\" | genitive - rodilьnik (kogo? čego?) | plural - munoga ličьba | type masculine (inanimate) - rodjajь mǫžьsky (neživotьny)",
+    "context": "seams",
+    "polish": "szwów",
+    "slovian": "šiv"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"šiv\" | locative - městьnik (ob kom? ob čem? kude? vu? na? pri?) | plural - munoga ličьba | type masculine (inanimate) - rodjajь mǫžьsky (neživotьny)",
+    "context": "seams",
+    "polish": "szwach",
+    "slovian": "šьvěh"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"šiv\" | dative - měrьnik (komu? čemu?) | plural - munoga ličьba | type masculine (inanimate) - rodjajь mǫžьsky (neživotьny)",
+    "context": "seams",
+    "polish": "szwom",
+    "slovian": "šьvom"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"šiv\" | instrumental - orǫdьnik (su kymь? su čimь? su jakymь?) | plural - munoga ličьba | type masculine (inanimate) - rodjajь mǫžьsky (neživotьny)",
+    "context": "seams",
+    "polish": "szwami",
+    "slovian": "šьvy"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"šiv\" | vocative - zovanьnik (o!) | plural - munoga ličьba | type masculine (inanimate) - rodjajь mǫžьsky (neživotьny)",
+    "context": "seams",
+    "polish": "szwy",
+    "slovian": "šьvi"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"čelověk\" | nominative - jimenovьnik (koto? čьto?) | singular - poedinьna ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "human",
+    "polish": "człowiek",
+    "slovian": "čelověk"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"čelověk\" | accusative - vinьnik (kogo? čьto?) | singular - poedinьna ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "human",
+    "polish": "człowieka",
+    "slovian": "čelověka"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"čelověk\" | genitive - rodilьnik (kogo? čego?) | singular - poedinьna ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "human",
+    "polish": "człowieka",
+    "slovian": "čelověka"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"čelověk\" | locative - městьnik (ob kom? ob čem? kude? vu? na? pri?) | singular - poedinьna ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "human",
+    "polish": "człowieku",
+    "slovian": "čelověcě"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"čelověk\" | dative - měrьnik (komu? čemu?) | singular - poedinьna ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "human",
+    "polish": "człowiekowi",
+    "slovian": "čelověku"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"čelověk\" | instrumental - orǫdьnik (su kymь? su čimь? su jakymь?) | singular - poedinьna ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "human",
+    "polish": "człowiekiem",
+    "slovian": "čelověkomь"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"čelověk\" | vocative - zovanьnik (o!) | singular - poedinьna ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "human",
+    "polish": "człowieku/człowiecze",
+    "slovian": "čelověče"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"ljudьje\" | nominative - jimenovьnik (koto? čьto?) | plural - munoga ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "humans, just people who are not necessarily from the same nation",
+    "polish": "ludzie",
+    "slovian": "ljudьje"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"ljudьje\" | accusative - vinьnik (kogo? čьto?) | plural - munoga ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "humans, just people who are not necessarily from the same nation",
+    "polish": "ludzi",
+    "slovian": "ljudi"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"ljudьje\" | genitive - rodilьnik (kogo? čego?) | plural - munoga ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "humans, just people who are not necessarily from the same nation",
+    "polish": "ludzi",
+    "slovian": "ljudьji"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"ljudьje\" | locative - městьnik (ob kom? ob čem? kude? vu? na? pri?) | plural - munoga ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "humans, just people who are not necessarily from the same nation",
+    "polish": "ludziach",
+    "slovian": "ljudih"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"ljudьje\" | dative - měrьnik (komu? czemu?) | plural - munoga ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "humans, just people who are not necessarily from the same nation",
+    "polish": "ludziom",
+    "slovian": "ljudim"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"ljudьje\" | instrumental - orǫdьnik (su kymь? su čimь? su jakymь?) | plural - munoga ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "humans, just people who are not necessarily from the same nation",
+    "polish": "ludźmi",
+    "slovian": "ljudьmi"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"ljudьje\" | vocative - zovateljь (o!) | plural - munoga ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "humans, just people who are not necessarily from the same nation",
+    "polish": "ludzie",
+    "slovian": "ljudьje"
   },
   {
     "type and case": "adjective - pridavьnik: \"slověnьsky\" | nominative - jimenovьnik (koto? čьto?) | singular - poedinьna ličьba | type masculine - rodjajь mǫžьsky",
