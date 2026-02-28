@@ -11011,6 +11011,258 @@
     "slovian": "muhy"
   },
   {
+    "type and case": "noun - jimenьnik: \"slověnin\" | nominative - jimenovьnik (koto? čьto?) | singular - poedinьna ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "slovianman/slovian man/slavic man/slavicman",
+    "polish": "słowianin",
+    "slovian": "slověnin"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"slověnin\" | accusative - vinьnik (kogo? čьto?) | singular - poedinьna ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "slovianman/slovian man/slavic man/slavicman",
+    "polish": "słowianina",
+    "slovian": "slověnina"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"slověnin\" | genitive - rodilьnik (kogo? čego?) | singular - poedinьna ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "slovianman/slovian man/slavic man/slavicman",
+    "polish": "słowianina",
+    "slovian": "slověnina"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"slověnin\" | locative - městьnik (ob kom? ob čem? kude? vu? na? pri?) | singular - poedinьna ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "slovianman/slovian man/slavic man/slavicman",
+    "polish": "słowianinie",
+    "slovian": "slověnině"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"slověnin\" | dative - měrьnik (komu? czemu?) | singular - poedinьna ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "slovianman/slovian man/slavic man/slavicman",
+    "polish": "słowianinowi",
+    "slovian": "slověninu"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"slověnin\" | instrumental - orǫdьnik (su kymь? su čimь? su jakymь?) | singular - poedinьna ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "slovianman/slovian man/slavic man/slavicman",
+    "polish": "słowianinem",
+    "slovian": "slověninomь"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"slověnin\" | vocative - zovateljь (o!) | singular - poedinьna ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "slovianman/slovian man/slavic man/slavicman",
+    "polish": "słowianinie",
+    "slovian": "slověnine"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"slověnin\" | nominative - jimenovьnik (koto? čьto?) | plural - munoga ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "slovianmen/slovian men/slavic men/slavicmen",
+    "polish": "słowianie",
+    "slovian": "slověne"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"slověnin\" | accusative - vinьnik (kogo? čьto?) | plural - munoga ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "slovianmen/slovian men/slavic men/slavicmen",
+    "polish": "słowian",
+    "slovian": "slověny"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"slověnin\" | genitive - rodilьnik (kogo? čego?) | plural - munoga ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "slovianmen/slovian men/slavic men/slavicmen",
+    "polish": "słowian",
+    "slovian": "slověn"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"slověnin\" | locative - městьnik (ob kom? ob čem? kude? vu? na? pri?) | plural - munoga ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "slovianmen/slovian men/slavic men/slavicmen",
+    "polish": "słowianach",
+    "slovian": "slověnih"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"slověnin\" | dative - měrьnik (komu? czemu?) | plural - munoga ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "slovianmen/slovian men/slavic men/slavicmen",
+    "polish": "słowianom",
+    "slovian": "slověnom"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"slověnin\" | instrumental - orǫdьnik (su kymь? su čimь? su jakymь?) | plural - munoga ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "slovianmen/slovian men/slavic men/slavicmen",
+    "polish": "słowianami",
+    "slovian": "slověny"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"slověnin\" | vocative - zovateljь (o!) | plural - munoga ličьba | type masculine (animate) - rodjajь mǫžьsky (životьny)",
+    "context": "slovianmen/slovian men/slavic men/slavicmen",
+    "polish": "słowianie",
+    "slovian": "slověne"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"slověnoka\" | nominative - jimenovьnik (koto? čьto?) | singular - poedinьna ličьba | type feminine (animacy) - rodjajь ženьsky (životьny)",
+    "context": "slovianwoman/slovian woman/slavic woman/slavicwoman",
+    "polish": "słowianka",
+    "slovian": "slověnoka"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"slověnoka\" | accusative - vinьnik (kogo? čьto?) | singular - poedinьna ličьba | type feminine (animacy) - rodjajь ženьsky (životьny)",
+    "context": "slovianwoman/slovian woman/slavic woman/slavicwoman",
+    "polish": "słowiankę",
+    "slovian": "slověnokǫ"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"slověnoka\" | genitive - rodilьnik (kogo? čego?) | singular - poedinьna ličьba | type feminine (animacy) - rodjajь ženьsky (životьny)",
+    "context": "slovianwoman/slovian woman/slavic woman/slavicwoman",
+    "polish": "słowianki",
+    "slovian": "slověnoky"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"slověnoka\" | locative - městьnik (ob kom? ob čem? kude? vu? na? pri?) | singular - poedinьna ličьba | type feminine (animacy) - rodjajь ženьsky (životьny)",
+    "context": "slovianwoman/slovian woman/slavic woman/slavicwoman",
+    "polish": "słowiance",
+    "slovian": "slověnocě"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"slověnoka\" | dative - měrьnik (komu? čemu?) | singular - poedinьna ličьba | type feminine (animacy) - rodjajь ženьsky (životьny)",
+    "context": "slovianwoman/slovian woman/slavic woman/slavicwoman",
+    "polish": "słowiance",
+    "slovian": "slověnocě"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"slověnoka\" | instrumental - orǫdьnik (su kymь? su čimь? su jakymь?) | singular - poedinьna ličьba | type feminine (animacy) - rodjajь ženьsky (životьny)",
+    "context": "slovianwoman/slovian woman/slavic woman/slavicwoman",
+    "polish": "słowianką",
+    "slovian": "slověnokojǫ"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"slověnoka\" | vocative - zovanьnik (o!) | singular - poedinьna ličьba | type feminine (animacy) - rodjajь ženьsky (životьny)",
+    "context": "slovianwoman/slovian woman/slavic woman/slavicwoman",
+    "polish": "słowianko",
+    "slovian": "slověnoko"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"slověnoka\" | nominative - jimenovьnik (koto? čьto?) | plural - munoga ličьba | type feminine (animacy) - rodjajь ženьsky (životьny)",
+    "context": "slovianwomen/slovian women/slavic women/slavicwomen",
+    "polish": "słowianki",
+    "slovian": "slověnoky"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"slověnoka\" | accusative - vinьnik (kogo? čьto?) | plural - munoga ličьba | type feminine (animacy) - rodjajь ženьsky (životьny)",
+    "context": "slovianwomen/slovian women/slavic women/slavicwomen",
+    "polish": "słowianki",
+    "slovian": "slověnoky"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"slověnoka\" | genitive - rodilьnik (kogo? čego?) | plural - munoga ličьba | type feminine (animacy) - rodjajь ženьsky (životьny)",
+    "context": "slovianwomen/slovian women/slavic women/slavicwomen",
+    "polish": "słowianek",
+    "slovian": "slověnok"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"slověnoka\" | locative - městьnik (ob kom? ob čem? kude? vu? na? pri?) | plural - munoga ličьba | type feminine (animacy) - rodjajь ženьsky (životьny)",
+    "context": "slovianwomen/slovian women/slavic women/slavicwomen",
+    "polish": "słowiankach",
+    "slovian": "slověnokah"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"slověnoka\" | dative - měrьnik (komu? čemu?) | plural - munoga ličьba | type feminine (animacy) - rodjajь ženьsky (životьny)",
+    "context": "slovianwomen/slovian women/slavic women/slavicwomen",
+    "polish": "słowiankom",
+    "slovian": "slověnokam"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"slověnoka\" | instrumental - orǫdьnik (su kymь? su čimь? su jakymь?) | plural - munoga ličьba | type feminine (animacy) - rodjajь ženьsky (životьny)",
+    "context": "slovianwomen/slovian women/slavic women/slavicwomen",
+    "polish": "słowiankami",
+    "slovian": "slověnokami"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"slověnoka\" | vocative - zovanьnik (o!) | plural - munoga ličьba | type feminine (animacy) - rodjajь ženьsky (životьny)",
+    "context": "slovianwomen/slovian women/slavic women/slavicwomen",
+    "polish": "słowianki",
+    "slovian": "slověnoky"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"zatoka\" | nominative - jimenovьnik (koto? čьto?) | singular - poedinьna ličьba | type feminine (animacy) - rodjajь ženьsky (životьny)",
+    "context": "bay, cove, gulf (body of water (especially the sea)",
+    "polish": "zatoka",
+    "slovian": "zatoka"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"zatoka\" | accusative - vinьnik (kogo? čьto?) | singular - poedinьna ličьba | type feminine (animacy) - rodjajь ženьsky (životьny)",
+    "context": "bay, cove, gulf (body of water (especially the sea)",
+    "polish": "zatokę",
+    "slovian": "zatokǫ"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"zatoka\" | genitive - rodilьnik (kogo? čego?) | singular - poedinьna ličьba | type feminine (animacy) - rodjajь ženьsky (životьny)",
+    "context": "bay, cove, gulf (body of water (especially the sea)",
+    "polish": "zatoki",
+    "slovian": "zatoky"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"zatoka\" | locative - městьnik (ob kom? ob čem? kude? vu? na? pri?) | singular - poedinьna ličьba | type feminine (animacy) - rodjajь ženьsky (životьny)",
+    "context": "bay, cove, gulf (body of water (especially the sea)",
+    "polish": "zatoce",
+    "slovian": "zatocě"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"zatoka\" | dative - měrьnik (komu? čemu?) | singular - poedinьna ličьba | type feminine (animacy) - rodjajь ženьsky (životьny)",
+    "context": "bay, cove, gulf (body of water (especially the sea)",
+    "polish": "zatoce",
+    "slovian": "zatocě"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"zatoka\" | instrumental - orǫdьnik (su kymь? su čimь? su jakymь?) | singular - poedinьna ličьba | type feminine (animacy) - rodjajь ženьsky (životьny)",
+    "context": "bay, cove, gulf (body of water (especially the sea)",
+    "polish": "zatoką",
+    "slovian": "zatokojǫ"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"zatoka\" | vocative - zovanьnik (o!) | singular - poedinьna ličьba | type feminine (animacy) - rodjajь ženьsky (životьny)",
+    "context": "bay, cove, gulf (body of water (especially the sea)",
+    "polish": "zatoko",
+    "slovian": "zatoko"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"zatoka\" | nominative - jimenovьnik (koto? čьto?) | plural - munoga ličьba | type feminine (animacy) - rodjajь ženьsky (životьny)",
+    "context": "bays, coves, gulfs (bodies of water (especially seas)",
+    "polish": "zatoki",
+    "slovian": "zatoky"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"zatoka\" | accusative - vinьnik (kogo? čьto?) | plural - munoga ličьba | type feminine (animacy) - rodjajь ženьsky (životьny)",
+    "context": "bays, coves, gulfs (bodies of water (especially seas)",
+    "polish": "zatoki",
+    "slovian": "zatoky"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"zatoka\" | genitive - rodilьnik (kogo? čego?) | plural - munoga ličьba | type feminine (animacy) - rodjajь ženьsky (životьny)",
+    "context": "bays, coves, gulfs (bodies of water (especially seas)",
+    "polish": "zatok",
+    "slovian": "zatok"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"zatoka\" | locative - městьnik (ob kom? ob čem? kude? vu? na? pri?) | plural - munoga ličьba | type feminine (animacy) - rodjajь ženьsky (životьny)",
+    "context": "bays, coves, gulfs (bodies of water (especially seas)",
+    "polish": "zatokach",
+    "slovian": "zatokah"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"zatoka\" | dative - měrьnik (komu? čemu?) | plural - munoga ličьba | type feminine (animacy) - rodjajь ženьsky (životьny)",
+    "context": "bays, coves, gulfs (bodies of water (especially seas)",
+    "polish": "zatokom",
+    "slovian": "zatokam"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"zatoka\" | instrumental - orǫdьnik (su kymь? su čimь? su jakymь?) | plural - munoga ličьba | type feminine (animacy) - rodjajь ženьsky (životьny)",
+    "context": "bays, coves, gulfs (bodies of water (especially seas)",
+    "polish": "zatokami",
+    "slovian": "zatokami"
+  },
+  {
+    "type and case": "noun - jimenьnik: \"zatoka\" | vocative - zovanьnik (o!) | plural - munoga ličьba | type feminine (animacy) - rodjajь ženьsky (životьny)",
+    "context": "bays, coves, gulfs (bodies of water (especially seas)",
+    "polish": "zatoki",
+    "slovian": "zatoky"
+  },
+  {
     "type and case": "noun - jimenьnik: \"baba\" | nominative - jimenovьnik (koto? čьto?) | singular - poedinьna ličьba | type feminine (animacy) - rodjajь ženьsky (životьny)",
     "context": "old woman",
     "polish": "baba",
