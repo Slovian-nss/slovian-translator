@@ -83,7 +83,7 @@ def get_relevant_context(text, dic):
 # 5. INTERFEJS I PROMPT
 # ============================================================
 st.title("Perkladačь slověnьskogo ęzyka")
-user_input = st.text_input("Vupiši slovo abo rěčenьje:", placeholder="")
+user_input = st.text_input("Vupiši slovo alibo rěčenьje:", placeholder="")
 if user_input:
     with st.spinner("Orzmyslь nad čęstьmi ęzyka i perklad..."):
         matches = get_relevant_context(user_input, dictionary)
@@ -219,3 +219,4 @@ Zwróć TYLKO czyste tłumaczenie używając alfabetu łacińskiego + ě, ę, ǫ
                         st.write(f"**{m['polish']}** → `{m['slovian']}` ({m.get('type and case','')})")
         except Exception as e:
             st.error(f"Blǫd umětьnogo uma: {e}")
+
