@@ -30,7 +30,6 @@ def load_data():
 dictionary, vuzor_data = load_data()
 
 def match_case(original, translated):
-    """Per-character case: mATKA → mATI"""
     if not translated: return original
     result = []
     t_idx = 0
@@ -42,33 +41,15 @@ def match_case(original, translated):
             result.append(o)
     return ''.join(result)
 
-def correct_spelling(text):
-    corrections = {"bozej": "bożej", "pólnocy": "północy"}  # rozszerz wg potrzeb
-    return ' '.join(corrections.get(w.lower(), w) for w in text.split())
-
-def tokenize(text):
-    return re.findall(r'\w+|[^\w\s]', text)
-
-def reorder_grammar(words_with_info):
-    """Przymiotnik ZAWSZE przed rzeczownikiem"""
-    result = []
-    i = 0
-    while i < len(words_with_info):
-        if i + 1 < len(words_with_info):
-            w1, info1 = words_with_info[i]
-            w2, info2 = words_with_info[i+1]
-            if ("noun" in info1.get('type', '') and "adj" in info2.get('type', '')) or \
-               ("adj" in info1.get('type', '') and "noun" in info2.get('type', '')):
-                result.extend([w2 if "adj" in info1.get('type', '') else w1, w1 if "adj" in info1.get('type', '') else w2])
-                i += 2
-                continue
-        result.append(words_with_info[i][0])
-        i += 1
-    return result
+def get_declined_form(token, base_entry, vuzor):
+    clean = re.sub(r'[^\w]', '', token).lower()
+    for entry in vuzor:
+        if entry.get("polish", "").lower() == clean and "slovian" in entry:
+            return entry["slovian"]
+    return base_entry.get("slovian", "") if base_entry else ""
 
 def custom_translate(text):
-    text = correct_spelling(text)
-    tokens = tokenize(text)
+    tokens = re.findall(r'\w+|[^\w\s]', text)
     processed = []
     found = []
     for token in tokens:
@@ -78,7 +59,7 @@ def custom_translate(text):
         clean = re.sub(r'[^\w]', '', token).lower()
         if clean in dictionary:
             entry = dictionary[clean][0]
-            slov = entry.get('slovian', '')
+            slov = get_declined_form(token, entry, vuzor_data) or entry.get('slovian', '')
             typ = entry.get('type and case', '').lower()
             final = match_case(token, slov)
             processed.append((final, {'type': typ}))
@@ -86,13 +67,13 @@ def custom_translate(text):
         else:
             final = match_case(token, "(ne najdeno slova)")
             processed.append((final, {'type': 'unknown'}))
-    return " ".join(reorder_grammar(processed)), found
+    return " ".join(w[0] for w in processed), found
 
 st.title("Perkladačь slověnьskogo ęzyka")
-st.caption("Tylko baza + reguły (zgodne z promptem)")
-user_input = st.text_input("Vupiši rěčenьje:", placeholder="np. Wojsko Słowiańskie")
+st.caption("Tylko baza + vuzor (odmiany)")
+user_input = st.text_input("Vupiši rěčenьje:", placeholder="np. Bez jasnego planu nas nie będzie.")
 if user_input:
-    with st.spinner("Przetwarzanie..."):
+    with st.spinner("Przetwarzanie według vuzor..."):
         result, matches = custom_translate(user_input)
         st.markdown("### Vynik perklada:")
         st.success(result)
