@@ -3,3 +3,4 @@ python-dotenv
 streamlit
 argostranslate
 sentencepiece
+groq
