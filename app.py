@@ -88,21 +88,24 @@ if user_input:
             for m in matches
         ])
 
-        system_prompt = """Jesteś tłumaczem słowiańskiego (prasłowiańskiego) języka i działającym w trybie 'Search and Replace', a twoje jedyne źródła wiedzy o tym języku to pliki 'osnova.json' i 'vuzor.json'. 
+        system_prompt = """Jesteś zaawansowanym tłumaczem na język słowiański (prasłowiański). Twoim zadaniem jest przekład polskiego tekstu przy ścisłym wykorzystaniu dostarczonych baz danych: 'osnova.json' (słownik) oraz 'vuzor.json' (wzorce odmian).
 
-ZADANIE:
-Zastąp polskie słowa ich odpowiednikami z listy MAPOWANIA, zachowując nienaruszony format źródłowy.
+PROCES TRANSLACJI:
+1. IDENTYFIKACJA: Znajdź polskie słowo w 'osnova.json'. Określ jego część mowy i przypisany wzorzec odmiany (vuzor).
+2. ANALIZA KONTEKSTU: Rozpoznaj formę gramatyczną polskiego słowa w zdaniu (przypadek, liczba, rodzaj, osoba, czas).
+3. GENEROWANIE FORMY: Zastosuj odpowiednią końcówkę z 'vuzor.json' do rdzenia słowa z 'osnova.json', aby uzyskać poprawną formę słowiańską.
 
 RYGORYSTYCZNE ZASADY:
-1. FORMAT: Zachowaj identyczne odstępy, spacje, znaki interpunkcyjne (. , ! ?), linki (http/www), symbole matematyczne (+ = / * %) i nowej linii (entery).
-2. WIELKOŚĆ LITER: Odwzoruj wielkość liter słowa wejściowego:
-   - Jeśli 'Słowo' -> 'Slovian'
-   - Jeśli 'słowo' -> 'slovian'
-   - Jeśli 'SŁOWO' -> 'SLOVIAN'
-3. NIEZMIENNE: Jeśli słowa nie ma w MAPOWANIU, zostaw je w oryginale. Nie tłumacz niczego 'z głowy'.
-4. BRAK DOPISKÓW: Zwróć wyłącznie przetworzony tekst. Nie dodawaj cudzysłowów ani wyjaśnień.
-5. KOLEJNOŚĆ SŁÓW: Przymiotniki (oznaczone jako adjective - pridavьnik) i przysłówki (oznaczone jako adverb - prislovok) są zawsze przed rzeczownikami (oznaczone jako noun - jimenьnik), dokładnie tak samo, jak w języku rosyjskim dla przykładu 'Wojsko Słowiańskie' albo 'Słowiańskie Wojsko' to 'Slověnьsko Vojisko'.
-6. Musisz rozpoznawać dobrze części mowy/języka polskiego i potem je dobrze odwzorowywać w przekładzie/tłumaczeniu na język słowiański (prasłowiański) w pliku 'vuzor.json' masz przykłady tworzenia gramatycznych odmian, czyli sprawdzasz, czy jakieś słowo jest w bazie, czyli w pliku 'osnova.json' i potem anazlizując te słowo sprawdzasz w pliku 'vuzor.json' odmienianie tego słowa."""
+1. WIERNOŚĆ BAZIE: Jeśli słowa nie ma w 'osnova.json', pozostaw je w oryginale. Nie wymyślaj własnych tłumaczeń.
+2. GRAMATYKA I SZYK:
+   - Zastosuj regułę: Przymiotnik/Przysłówek zawsze stoi PRZED rzeczownikiem (np. "Wojsko Słowiańskie" -> "Slověnьsko Vojisko").
+   - Dopasuj końcówki przymiotników do rodzaju i przypadku rzeczownika, który opisują.
+3. FORMATOWANIE:
+   - Zachowaj nienaruszone: interpunkcję, spacje, linki, symbole i znaki nowej linii.
+   - Zachowaj wielkość liter: Słowo -> Slovian, słowo -> slovian, SŁOWO -> SLOVIAN.
+4. WYJŚCIE: Zwróć WYŁĄCZNIE przetworzony tekst. Zakaz dodawania komentarzy, wyjaśnień czy cudzysłowów.
+
+Działaj w trybie bezpośredniego nadpisywania tekstu źródłowego."""
 
         try:
             chat_completion = client.chat.completions.create(
@@ -126,6 +129,7 @@ RYGORYSTYCZNE ZASADY:
             with st.expander("Użyte mapowanie z bazy"):
                 for m in matches:
                     st.write(f"'{m['polish']}' → `{m['slovian']}`")
+
 
 
 
