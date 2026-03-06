@@ -22,7 +22,7 @@ st.markdown("""
 # 2. KLUCZ API I NOWY MODEL (llama-3.3-70b-versatile)
 # ============================================================
 # Zaktualizowano model na llama-3.3-70b-versatile, który zastąpił wycofany model
-GROQ_API_KEY = "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" 
+GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
 client = Groq(api_key=GROQ_API_KEY)
 
 # ============================================================
@@ -219,3 +219,4 @@ Zwróć TYLKO czyste tłumaczenie używając alfabetu łacińskiego + ě, ę, ǫ
 
         except Exception as e:
             st.error(f"Blǫd umětьnogo uma: {e}")
+
