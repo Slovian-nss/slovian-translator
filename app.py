@@ -14,18 +14,17 @@ st.markdown("""
     .main { background-color: #0e1117; }
     .stTextInput > div > div > input { background-color: #1a1a1a; color: #dcdcdc; border: 1px solid #333; }
     .stSuccess { background-color: #050505; border: 1px solid #2e7d32; color: #dcdcdc; font-size: 1.2rem; }
-    .stCaption { color: #888; }
     </style>
     """, unsafe_allow_html=True)
 
 # ============================================================
-# 2. KLUCZ API I KONFIGURACJA KLIENTA
+# 2. KLIENT GROQ
 # ============================================================
 GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
 client = Groq(api_key=GROQ_API_KEY)
 
 # ============================================================
-# 3. ŁADOWANIE BAZY DANYCH
+# 3. ŁADOWANIE BAZY
 # ============================================================
 @st.cache_data
 def load_dictionary():
@@ -48,7 +47,7 @@ def load_dictionary():
 dictionary = load_dictionary()
 
 # ============================================================
-# 4. LOGIKA WYSZUKIWANIA (RAG)
+# 4. LOGIKA RAG (Zwiększona precyzja)
 # ============================================================
 def get_relevant_context(text, dic):
     search_text = re.sub(r'[^\w\s]', '', text.lower())
@@ -58,58 +57,53 @@ def get_relevant_context(text, dic):
     for word in words:
         if word in dic:
             relevant_entries.extend(dic[word])
-        # Szukanie po rdzeniu dla lepszego kontekstu
-        elif len(word) > 3:
-            for key in dic.keys():
-                if word.startswith(key[:4]) and len(key) > 3:
-                    relevant_entries.extend(dic[key])
     
     seen = set()
     unique_entries = []
     for e in relevant_entries:
-        identifier = (e['slovian'], e.get('type and case', ''), e.get('polish', ''))
+        # Kluczem jest unikalność pary Polska-Słowiańska
+        identifier = (e['polish'], e['slovian'])
         if identifier not in seen:
             seen.add(identifier)
             unique_entries.append(e)
             
-    return unique_entries[:40]
+    return unique_entries[:30]
 
 # ============================================================
-# 5. INTERFEJS I LOGIKA TŁUMACZENIA
+# 5. TŁUMACZENIE
 # ============================================================
 st.title("Perkladačь slověnьskogo ęzyka")
 
 user_input = st.text_input("Vupiši slovo alibo rěčenьje:", placeholder="")
 
 if user_input:
-    with st.spinner("Orzmyslь nad čęstьmi ęzyka i perklad..."):
-        
+    with st.spinner("Analiza gramatyczna i dobór form..."):
         matches = get_relevant_context(user_input, dictionary)
         
-        # Przygotowanie kontekstu - kluczowe dla AI
+        # Tworzymy bardzo czytelną listę mapowania dla AI
         context_str = "\n".join([
-            f"- POLSKIE: {m['polish']} -> SŁOWIAŃSKIE: {m['slovian']} ({m.get('type and case','')})"
+            f"JEŚLI POLSKIE SŁOWO TO: '{m['polish']}' -> UŻYJ DOKŁADNIE TEJ FORMY: '{m['slovian']}'"
             for m in matches
         ])
 
-        # Zrównoważony prompt: rygorystyczny wobec BAZY, ale pozwalający na wybór formy
-        system_prompt = """Jesteś precyzyjnym tłumaczem polsko-prasłowiańskim. 
-        Twoim jedynym zadaniem jest wybór właściwego słowa z dostarczonej BAZY na podstawie kontekstu gramatycznego.
+        system_prompt = """Jesteś rygorystycznym tłumaczem-transliteratorem. 
+Twoim zadaniem jest zamiana polskich słów na słowiańskie odpowiedniki przy zachowaniu DOKŁADNYCH FORM z dostarczonej listy.
 
-        ZASADY:
-        1. NIE ZMIENIAJ końcówek słów podanych w BAZIE. Jeśli w BAZIE dla danego znaczenia/osoby widnieje konkretna forma, użyj jej 1:1.
-        2. DOKŁADNOŚĆ: Zwróć uwagę, że 'jestem' (1 os. lp) to inna forma niż 'jesteśmy' (1 os. lm). Wybierz tę, która pasuje do polskiego słowa.
-        3. Jeśli w BAZIE 'jesteśmy' = 'esmy', użyj 'esmy'. Jeśli 'jestem' = 'jesmь', użyj 'jesmь'.
-        4. Zachowaj wielkość liter użytkownika.
-        5. Zakaz używania cyrylicy (oprócz znaku ь).
-        6. Przymiotnik przed rzeczownikiem.
-        7. Wyjście: tylko surowe tłumaczenie."""
+ZASADY:
+1. MASZ CAŁKOWITY ZAKAZ modyfikowania końcówek słów podanych w liście mapowania.
+2. ROZPOZNAWANIE FORM: 
+   - Jeśli polskie słowo to 'jesteśmy' -> użyj formy przypisanej do 'jesteśmy' (np. esmy).
+   - Jeśli polskie słowo to 'jestem' -> użyj formy przypisanej do 'jestem' (np. jesmь).
+3. Nie uogólniaj zasad. Każde słowo z listy mapowania jest traktowane indywidualnie.
+4. Zachowaj interpunkcję i wielkość liter wejścia.
+5. Zwróć wyłącznie wynik końcowy."""
 
         try:
+            # Używamy modelu wybranego przez Ciebie w Playground
             chat_completion = client.chat.completions.create(
                 messages=[
                     {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": f"DOKUMENTACJA (BAZA):\n{context_str}\n\nZADANIE: Przetłumacz '{user_input}' ściśle według BAZY."}
+                    {"role": "user", "content": f"LISTA MAPOWANIA:\n{context_str}\n\nDO TŁUMACZENIA: {user_input}"}
                 ],
                 model="openai/gpt-oss-120b",
                 temperature=0.0
@@ -119,10 +113,10 @@ if user_input:
             st.markdown("### Vynik perklada:")
             st.success(response_text)
 
-            if matches:
-                with st.expander("Užito žerdlo jiz osnovy"):
-                    for m in matches:
-                        st.write(f"**{m['polish']}** → `{m['slovian']}` ({m.get('type and case','')})")
-
         except Exception as e:
-            st.error(f"Blǫd umětьnogo uma: {e}")
+            st.error(f"Blǫd: {e}")
+
+        if matches:
+            with st.expander("Užito žerdlo jiz osnovy"):
+                for m in matches:
+                    st.write(f"**{m['polish']}** → `{m['slovian']}`")
