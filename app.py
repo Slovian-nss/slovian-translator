@@ -129,7 +129,7 @@ osnova.json
 
 --------------------------------------------------
 
-źródło wzorów/przykładów tworzenia gramatyczncyh odmian to plik vuzor.json
+Źródło wzorów/przykładów tworzenia gramatyczncyh odmian to plik vuzor.json
 
 --------------------------------------------------
 TOKENIZACJA
@@ -299,6 +299,7 @@ Vu obgordě.
             with st.expander("Użyte mapowanie z bazy"):
                 for m in matches:
                     st.write(f"'{m['polish']}' → `{m['slovian']}`")
+
 
 
 
