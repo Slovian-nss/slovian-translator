@@ -101,6 +101,7 @@ Dla każdego polskiego słowa w tekście wejściowym wykonaj algorytm:
 3. Pobierz "slowianski_rdzen" oraz przypisany mu "vuzor" z 'osnova.json'.
 4. Wyciągnij odpowiednią końcówkę z 'vuzor.json' pasującą do zidentyfikowanego przypadku/liczby/rodzaju.
 5. SKLEJ: [slowianski_rdzen] + [koncowka].
+6. Przymiotnik i przysłówek są zawsze przed rzeczownikiem.
 
 ZASADY BEZWZGLĘDNE:
 - ZAKAZ kopiowania polskich końcówek. Słowo wyjściowe MUSI być złożeniem rdzenia i końcówki z Twoich plików.
@@ -129,6 +130,7 @@ ZASADY BEZWZGLĘDNE:
             with st.expander("Użyte mapowanie z bazy"):
                 for m in matches:
                     st.write(f"'{m['polish']}' → `{m['slovian']}`")
+
 
 
 
