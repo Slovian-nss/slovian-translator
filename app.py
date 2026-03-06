@@ -107,7 +107,7 @@ ALGORYTM DZIAŁANIA (KROK PO KROKU)
 --------------------------------------------------
 Dla każdego tokenu (słowa):
 
-1. ANALIZA POLSKA: Określ formę gramatyczną polskiego słowa (Przypadek, Liczba, Rodzaj, Żywotność) i określasz podstawową formę tego słowa (Lemat) po słowiańsku (prasłowiańsku) w pliku osnova.json
+1. ANALIZA: Określ formę gramatyczną słowiańskiego (prasłowiańskiego) słowa (Przypadek, Liczba, Rodzaj, Żywotność) i określasz podstawową formę tego słowa (Lemat) po słowiańsku (prasłowiańsku) w pliku osnova.json
 
 2. MAPOWANIE RDZENIA: Znajdź Lemat w 'osnova.json' i pobierz odpowiadający mu słowiański rdzeń.
    Jeśli lematu nie ma w 'osnova.json' -> zwróć (ne najdeno slova).
@@ -153,5 +153,6 @@ ZASADY BEZWZGLĘDNE:
             with st.expander("Użyte mapowanie z bazy"):
                 for m in matches:
                     st.write(f"'{m['polish']}' → `{m['slovian']}`")
+
 
 
