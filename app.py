@@ -209,12 +209,12 @@ ALGORYTM
 
 Dla każdego słowa:
 
-1. znajdź jego podstawę w osnova.json
-2. pobierz rdzen
-3. pobierz vuzor
+1. znajdź jego podstawę odmianę w osnova.json
+2. znajdź rdzeń
+3. znajdź słowo z podobnym rdzeniem/odmianą w pliku vuzor.json
 4. określ przypadek
 5. określ liczbę
-6. znajdź końcówkę w vuzor.json
+6. znajdź końcówkę w pliku vuzor.json
 
 vuzor → liczba → przypadek
 
@@ -299,6 +299,7 @@ Vu obgordě.
             with st.expander("Użyte mapowanie z bazy"):
                 for m in matches:
                     st.write(f"'{m['polish']}' → `{m['slovian']}`")
+
 
 
 
