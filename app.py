@@ -92,7 +92,7 @@ if user_input:
 
 STRUKTURA LOGICZNA PLIKÓW:
 - osnova.json: Zawiera pary {"polskie_slowo": "slowianski_rdzen", "vuzor": "nazwa_wzoru"}.
-- vuzor.json: Zawiera tabele końcówek dla każdego "vuzor" (np. mianownik: -o, miejscownik: -u).
+- vuzor.json: Zawiera przykłady odmian słów zgodnie z gramatyką.
 
 TWOJA INSTRUKCJA WYKONAWCZA:
 Dla każdego polskiego słowa w tekście wejściowym wykonaj algorytm:
@@ -105,7 +105,7 @@ Dla każdego polskiego słowa w tekście wejściowym wykonaj algorytm:
 ZASADY BEZWZGLĘDNE:
 - ZAKAZ kopiowania polskich końcówek. Słowo wyjściowe MUSI być złożeniem rdzenia i końcówki z Twoich plików.
 - SZYK: Przymiotnik i przysłówek ZAWSZE przed rzeczownikiem.
-- FORMAT: Zachowaj interpunkcję, wielkość liter i brak dodatkowego komentarza."""
+- FORMAT: Zachowaj interpunkcję, odwzorowanie, wielkość liter, spacje, odstępy, znaki matematyczne, linkowanie i brak dodatkowego komentarza."""
 
         try:
             chat_completion = client.chat.completions.create(
@@ -129,6 +129,7 @@ ZASADY BEZWZGLĘDNE:
             with st.expander("Użyte mapowanie z bazy"):
                 for m in matches:
                     st.write(f"'{m['polish']}' → `{m['slovian']}`")
+
 
 
 
