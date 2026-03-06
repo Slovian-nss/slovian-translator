@@ -81,7 +81,7 @@ ZASADY BEZWZGLĘDNE:
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": f"TEKST: {user_input}"}
                 ],
-                model="llama-3.3-70b-versatile", 
+                model="openai/gpt-oss-120b", 
                 temperature=0.0
             )
             
@@ -90,3 +90,4 @@ ZASADY BEZWZGLĘDNE:
             
         except Exception as e:
             st.error(f"Błąd modelu: {e}")
+
