@@ -204,7 +204,7 @@ Zwróć TYLKO czyste tłumaczenie używając alfabetu łacińskiego + ě, ę, ǫ
                     {"role": "user", "content": f"BAZA:\n{context_str}\n\nDO TŁUMACZENIA: {user_input}"}
                 ],
                 model="openai/gpt-oss-safeguard-20b",
-                temperature=1.0
+                temperature=0.0
             )
 
             response_text = chat_completion.choices[0].message.content.strip()
@@ -219,6 +219,7 @@ Zwróć TYLKO czyste tłumaczenie używając alfabetu łacińskiego + ě, ę, ǫ
 
         except Exception as e:
             st.error(f"Blǫd umětьnogo uma: {e}")
+
 
 
 
