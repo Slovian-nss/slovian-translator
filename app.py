@@ -4,117 +4,93 @@ import os
 import re
 from collections import defaultdict
 
+# ================== KONFIGURACJA STRONY ==================
+
 st.set_page_config(page_title="Perkladačь slověnьskogo ęzyka", layout="centered")
 
 st.markdown("""
 <style>
 .main {background:#0e1117}
-.stTextArea textarea {background:#1a1a1a;color:#dcdcdc}
+.stTextArea textarea {background:#1a1a1a;color:#dcdcdc;font-size:1.1rem;}
+.stSuccess {background-color: #1e2329; border: 1px solid #4caf50;}
 </style>
 """, unsafe_allow_html=True)
 
-
-# ================== ŁADOWANIE ==================
+# ================== ŁADOWANIE DANYCH ==================
 
 @st.cache_data
 def load_json(filename):
-
     if not os.path.exists(filename):
         return []
-
-    with open(filename,"r",encoding="utf-8") as f:
+    with open(filename, "r", encoding="utf-8") as f:
         return json.load(f)
-
 
 osnova = load_json("osnova.json")
 vuzor  = load_json("vuzor.json")
 
-
-# ================== SŁOWNIK ==================
+# ================== INDEKS SŁOWNIKA ==================
 
 @st.cache_data
 def build_dictionary(data):
-
+    # Mapujemy polskie słowa na listę rekordów słownikowych
     dic = defaultdict(list)
-
     for entry in data:
-
         key = entry.get("polish","").lower().strip()
-
         if key:
             dic[key].append(entry)
-
     return dic
-
 
 dictionary = build_dictionary(osnova)
 
+# ================== LOGIKA TŁUMACZENIA (SILNIK LOKALNY) ==================
 
-# ================== TOKENIZACJA ==================
+def translate_text(input_text, dic):
+    """
+    Tłumaczy tekst zachowując interpunkcję, wielkość liter i spacje.
+    Zastępuje AI bezpośrednim mapowaniem ze słownika.
+    """
+    # Tokenizacja: wyłapujemy słowa (\w+) oraz wszystko inne (spacje, znaki interpunkcyjne)
+    tokens = re.findall(r'\w+|[^\w\s]|\s+', input_text)
+    translated_output = []
 
-def tokenize(text):
+    for token in tokens:
+        # Jeśli to nie jest słowo (np. kropka, spacja, przecinek), dodaj bez zmian
+        if not re.match(r'\w+', token):
+            translated_output.append(token)
+            continue
+        
+        lower_token = token.lower().strip()
+        found_slovian = None
 
-    tokens = re.findall(r'\w+|[^\w\s]', text, re.UNICODE)
-    return tokens
-
-
-# ================== ZACHOWANIE WIELKOŚCI LITER ==================
-
-def match_case(original, translated):
-
-    if original.isupper():
-        return translated.upper()
-
-    if original[0].isupper():
-        return translated.capitalize()
-
-    return translated
-
-
-# ================== TŁUMACZENIE SŁOWA ==================
-
-def translate_word(word):
-
-    key = word.lower()
-
-    if key in dictionary:
-
-        entry = dictionary[key][0]
-
-        slov = entry.get("slovian","")
-
-        return match_case(word, slov)
-
-    return "(ne najdeno slova)"
-
-
-# ================== TŁUMACZENIE TEKSTU ==================
-
-def translate_text(text):
-
-    tokens = tokenize(text)
-
-    output = []
-
-    for t in tokens:
-
-        if re.match(r'\w+', t):
-
-            output.append(translate_word(t))
-
+        # 1. Dokładne dopasowanie
+        if lower_token in dic:
+            # Wybieramy pierwsze znaczenie (można tu dodać logikę wyboru części mowy)
+            found_slovian = dic[lower_token][0]["slovian"]
+        
+        # 2. Próba dopasowania po rdzeniu (min. 4 litery)
+        elif len(lower_token) >= 4:
+            pref = lower_token[:4]
+            for base, entries in dic.items():
+                if base.startswith(pref):
+                    found_slovian = entries[0]["slovian"]
+                    break
+        
+        # 3. Finalizacja wyniku
+        if found_slovian:
+            # Zachowanie wielkości liter (jeśli oryginał był z dużej)
+            if token[0].isupper():
+                found_slovian = found_slovian.capitalize()
+            translated_output.append(found_slovian)
         else:
-            output.append(t)
+            # Zasada bezwzględna nr 1: ne najdeno slova
+            translated_output.append("(ne najdeno slova)")
 
-    return " ".join(output)\
-        .replace(" ,",",")\
-        .replace(" .",".")\
-        .replace(" !","!")\
-        .replace(" ?","?")
+    return "".join(translated_output)
 
-
-# ================== INTERFEJS ==================
+# ================== INTERFEJS UŻYTKOWNIKA ==================
 
 st.title("Perkladačь slověnьskogo ęzyka")
+st.subheader("Lokalny silnik tłumaczenia (bez AI)")
 
 user_input = st.text_area(
     "Vupiši slovo alibo rěčenьje:",
@@ -123,10 +99,25 @@ user_input = st.text_area(
 )
 
 if user_input:
+    with st.spinner("Przetwarzanie danych..."):
+        # Wykonanie tłumaczenia lokalnie
+        result = translate_text(user_input, dictionary)
 
-    with st.spinner("Przetwarzanie..."):
+    st.markdown("### Vynik perklada:")
+    st.success(result)
 
-        result = translate_text(user_input)
+    # Sekcja pomocnicza: podgląd słów użytych w tekście
+    with st.expander("Analiza słownikowa użytych wyrazów"):
+        words = re.findall(r'\w+', user_input.lower())
+        found_any = False
+        for w in set(words):
+            if w in dictionary:
+                found_any = True
+                for entry in dictionary[w]:
+                    st.write(f"📖 **{entry['polish']}** → `{entry['slovian']}` ({entry.get('type', '???')})")
+        if not found_any:
+            st.info("Nie znaleziono dopasowań w słowniku osnova.json.")
 
-        st.markdown("### Vynik perklada:")
-        st.success(result)
+# Stopka
+st.divider()
+st.caption("Aplikacja działa w trybie offline (Local Logic). Wykorzystuje osnova.json jako bazę wiedzy.")
