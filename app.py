@@ -12,86 +12,98 @@ st.markdown("""
 <style>
 .main {background:#0e1117}
 .stTextArea textarea {background:#1a1a1a;color:#dcdcdc;font-size:1.1rem;}
-.stSuccess {background-color: #1e2329; border: 1px solid #4caf50; font-size: 1.3rem;}
 </style>
 """, unsafe_allow_html=True)
 
 client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 
-# ================== OPTYMALIZACJA DANYCH ==================
+# ================== ŁADOWANIE DANYCH ==================
 @st.cache_data
-def load_database():
+def load_full_database():
     def load_json(name):
         if not os.path.exists(name): return []
         with open(name, "r", encoding="utf-8") as f: return json.load(f)
+    # Łączymy wzory odmian i podstawy
     return load_json("vuzor.json") + load_json("osnova.json")
 
-DATA = load_database()
+DATA = load_full_database()
 
-def get_mini_context(text):
-    # Szukamy tylko konkretnych słów, ograniczając liczbę rekordów do minimum
-    words = re.findall(r'\b\w+\b', text.lower())
+def find_precise_matches(text):
+    tokens = re.findall(r'\w+', text.lower())
     matches = []
-    seen = set()
-
-    for w in words:
-        count = 0
+    
+    # Rozpoznawanie przyimków dla kontekstu
+    case_context = {"w": "locative", "we": "locative", "na": "locative", "do": "genitive"}
+    
+    for i, word in enumerate(tokens):
+        needed_case = case_context.get(tokens[i-1]) if i > 0 else None
+        
+        # Szukamy w bazie wszystkiego co pasuje do słowa lub rdzenia
+        relevant_for_word = []
         for entry in DATA:
             pl = entry.get("polish", "").lower()
-            if w == pl:
-                key = (entry['polish'], entry['slovian'], entry.get('type and case', ''))
-                if key not in seen:
-                    matches.append(entry)
-                    seen.add(key)
-                    count += 1
-            if count >= 5: break # Max 5 form na jedno słowo, by nie zapchać limitu 413
+            # Szukamy dokładnego dopasowania lub po rdzeniu (min 4 litery)
+            if word == pl or (len(word) >= 4 and pl.startswith(word[:4])):
+                relevant_for_word.append(entry)
+        
+        # Sortujemy: najpierw te, które pasują do wymaganego przypadku i są rzeczownikami
+        if needed_case:
+            relevant_for_word.sort(key=lambda x: 1 if (needed_case in x.get("type and case", "").lower() and "noun" in x.get("type and case", "").lower()) else 0, reverse=True)
+            
+        matches.extend(relevant_for_word[:8]) # Przekazujemy tylko top 8 dopasowań na słowo
     return matches
 
-# ================== LOGIKA TŁUMACZENIA ==================
-
+# ================== INTERFEJS ==================
 st.title("Perkladačь slověnьskogo ęzyka")
-user_input = st.text_area("Vupiši tekst:", placeholder="W moim ogrodzie 10+5%.", height=150)
+user_input = st.text_area("Vupiši rěčenьje:", placeholder="W moim ogrodzie są ludzie.", height=150)
 
 if user_input:
-    with st.spinner("Tłumaczenie (optymalizacja limitów)..."):
-        mini_dict = get_mini_context(user_input)
+    with st.spinner("Trwa rygorystyczne tłumaczenie bez halucynacji..."):
+        dictionary_context = find_precise_matches(user_input)
         
-        # Tworzymy bardzo krótki słownik
+        # Tworzymy rygorystyczny słownik dla AI
         formatted_db = "\n".join([
-            f"{m['polish']}={m['slovian']} ({m.get('type and case', '')})"
-            for m in mini_dict
+            f"- POLSKI: {m['polish']} | SŁOWIAŃSKI: {m['slovian']} | GRAMATYKA: {m.get('type and case', '')}"
+            for m in dictionary_context
         ])
 
-        system_prompt = f"""Jesteś tłumaczem. Przetłumacz tekst, zachowując ORYGINALNE SPACJE, WIELKOŚĆ LITER I INTERPUNKCJĘ.
-Dane:
+        system_prompt = f"""Jesteś procesorem tłumaczącym na język prasłowiański. 
+ZAKAZ: Nie używaj wiedzy ogólnej. Używaj TYLKO danych z poniższej listy.
+
+DANE SŁOWNIKOWE:
 {formatted_db}
 
-Zasady:
-1. 'w'/'W' -> 'Vu'.
-2. Po 'Vu' użyj formy 'noun' + 'locative' (np. 'obgordě').
-3. Nie tłumacz linków ani matematyki.
-4. Jeśli brak słowa, zostaw polskie.
-Zwróć TYLKO wynik."""
+ZASADY TŁUMACZENIA, PRZYKŁAD POPRAWNY:
+Input: W moim ogrodzie.
+Output: Vu mojimь obgordě.
+
+Input: W moim mieście.
+Output: Vu mojimь gordě.
+
+ZASADY BEZWZGLĘDNE:
+1. Jeśli nie ma odmiany słowiańskiego słowa (lub jego podstawowej odmiany), to wtedy napisz w jego miejscu (ne najdeno slova) i tłumacz dalej to co możesz.
+2. SZYK: Przymiotniki (oznaczone są one jako: adjective - pridavьnik) i przysłówki (oznaczone są one jako: adverb - prislovok) zawsze są przed rzeczownikami (oznaczone są one jako: noun - jimenьnik).
+3. FORMAT: Zachowaj interpunkcję, odwzorowanie, wielkość liter, spacje, odstępy, znaki matematyczne, linkowanie i brak dodatkowego komentarza.
+
+TWOJE ZADANIE: Przetłumacz zdanie użytkownika, zachowując powyższe zasady."""
 
         try:
-            # Używamy mniejszego modelu, który ma wyższe limity TPM
             response = client.chat.completions.create(
-                model="llama3-8b-8192", 
+                model="llama-3.3-70b-versatile",
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_input}
                 ],
-                temperature=0
+                temperature=0 # Blokada kreatywności
             )
             
+            translation = response.choices[0].message.content.strip()
             st.markdown("### Vynik perklada:")
-            st.success(response.choices[0].message.content.strip())
+            st.success(translation)
             
         except Exception as e:
-            if "413" in str(e):
-                st.error("Zbyt długi tekst! Skróć go lub usuń skomplikowane słowa.")
-            else:
-                st.error(f"Błąd: {e}")
+            st.error(f"Błąd komunikacji z Groq: {e}")
 
-    with st.expander("Użyte rekordy (max 5 na słowo)"):
-        st.table(mini_dict)
+    with st.expander("Zobacz bazę gramatyczną użytą do tego tłumaczenia"):
+        st.write("Te dane zostały wysłane do AI jako jedyne źródło prawdy:")
+        st.table(dictionary_context)
