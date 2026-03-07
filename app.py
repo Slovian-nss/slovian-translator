@@ -80,7 +80,7 @@ ODPOWIEDZ TYLKO PRZETŁUMACZONYM TEKSTEM."""
 
         try:
             response = client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
+                model="openai/gpt-oss-120b",
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_input}
@@ -98,3 +98,4 @@ ODPOWIEDZ TYLKO PRZETŁUMACZONYM TEKSTEM."""
     with st.expander("Szczegóły techniczne"):
         st.write("Wykryte słowa do tłumaczenia:")
         st.table(dictionary)
+
