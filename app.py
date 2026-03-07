@@ -24,7 +24,6 @@ except Exception as e:
     st.stop()
 
 # ================== ŁADOWANIE I INDEKSOWANIE DANYCH ==================
-
 @st.cache_data
 def load_data():
     def read_json(path):
@@ -33,23 +32,20 @@ def load_data():
                 return json.load(f)
         return []
 
-    osnova_raw = read_json("osnova.json")
-    vuzor_raw = read_json("vuzor.json")
+    o_raw = read_json("osnova.json")
+    v_raw = read_json("vuzor.json")
     
-    # Indeksujemy słownik po polskim słowie
-    dictionary = defaultdict(list)
-    for entry in osnova_raw:
+    dic = defaultdict(list)
+    for entry in o_raw:
         pol = entry.get("polish", "").lower().strip()
         if pol:
-            dictionary[pol].append(entry)
+            dic[pol].append(entry)
             
-    return dictionary, vuzor_raw, osnova_raw
+    return dic, v_raw, o_raw
 
-# NAPRAWA BŁĘDU: Przypisujemy wyniki do zmiennych globalnych
 dictionary, vuzor_list, osnova_raw = load_data()
 
-# ================== LOGIKA ESTRAKCJI KONTEKSTU ==================
-
+# ================== LOGIKA WYDOBYWANIA DANYCH ==================
 def get_grammatical_context(text, dic, vuzory):
     words = re.findall(r'\b\w+\b', text.lower())
     found_mappings = []
@@ -70,62 +66,50 @@ def get_grammatical_context(text, dic, vuzory):
             found_mappings.append(e)
             s_base = e.get("slovian")
             
-            # Szukamy form w vuzorze na podstawie słowa bazowego
             if s_base and s_base not in seen_slovian_bases:
                 for v in vuzory:
                     v_case = v.get("type and case", "")
                     v_slov = v.get("slovian", "")
-                    
-                    # Sprawdzenie czy wiersz dotyczy danego słowa
-                    if s_base == v_slov or f"'{s_base}'" in v_case:
-                        relevant_forms.append({
-                            "forma": v_slov,
-                            "gramatyka": v_case
-                        })
+                    # Kluczowe dopasowanie: szukamy rdzenia słowa w opisie gramatycznym
+                    if s_base == v_slov or f"'{s_base}'" in v_case or f": {s_base}" in v_case:
+                        relevant_forms.append({"forma": v_slov, "info": v_case})
                 seen_slovian_bases.add(s_base)
 
     return found_mappings, relevant_forms
 
-# ================== INTERFEJS UŻYTKOWNIKA ==================
-
+# ================== INTERFEJS ==================
 st.title("🏛️ Perkladačь slověnьskogo ęzyka")
-st.subheader("Precyzyjne tłumaczenie z wykorzystaniem tabel odmian")
 
 user_input = st.text_area(
     "Vupiši slovo alibo rěčenьje (PL):",
-    placeholder="Np. W Słowianach siła. Miasto jest wielkie.",
+    placeholder="W Słowianach siła.",
     height=150
 )
 
 if user_input:
-    with st.spinner("Analiza gramatyczna i tłumaczenie..."):
-        
+    with st.spinner("Generowanie precyzyjnego tłumaczenia..."):
         mappings, grammar_pool = get_grammatical_context(user_input, dictionary, vuzor_list)
 
-        # Przygotowanie kontekstu dla AI (szczegóły: część mowy, rodzaj, przypadek)
-        mappings_str = "\n".join([f"- PL: {m.get('polish')} -> SL_BASE: {m.get('slovian')}" for m in mappings])
-        
-        grammar_str = ""
-        for item in grammar_pool:
-            grammar_str += f"Forma: {item['forma']} | Info: {item['gramatyka']}\n"
+        grammar_str = "\n".join([f"FORMA: {i['forma']} | GRAMATYKA: {i['info']}" for i in grammar_pool])
 
-        system_prompt = f"""Jesteś ekspertem lingwistyki słowiańskiej. 
-Twoim zadaniem jest przetłumaczyć polski tekst na język słowiański, używając DOKŁADNYCH FORM z dostarczonych tabel odmian.
+        system_prompt = f"""Jesteś automatem tłumaczącym na język prasłowiański. 
+Twoim jedynym zadaniem jest złożenie zdania z gotowych klocków dostarczonych poniżej. 
 
-SŁOWNIK (FORMY BAZOWE):
-{mappings_str}
-
-DOSTĘPNE FORMY GRAMATYCZNE (RODZAJ, LICZBA, PRZYPADEK, ŻYWOTNOŚĆ):
+DANE WEJŚCIOWE:
 {grammar_str}
 
-ZASADY:
-1. Rozpoznaj formę w polskim zdaniu (np. "miastach" to miejscownik, liczba mnoga).
-2. Znajdź w tabeli powyżej formę słowiańską, która ma w Info: 'locative' oraz 'plural'.
-3. Jeśli słowo to 'gord', a szukasz locative plural, z tabeli wybierz 'gorděh'.
-4. Zachowaj szyk: Przymiotnik przed rzeczownikiem.
-5. Nie dodawaj komentarzy, tylko czyste tłumaczenie.
+ZASADY KRYTYCZNE:
+1. ZAKAZ ZMIENIANIA KOŃCÓWEK. Używaj wyłącznie form wymienionych jako 'FORMA'.
+2. PROCES DECYZYJNY:
+   - Polskie zdanie: "W Słowianach siła"
+   - Analiza: "W" -> "Vu", "Słowianach" -> (Miejscownik/Locative, l. mnoga/plural).
+   - Szukasz w danych: FORMA dla 'locative' i 'plural'. 
+   - Jeśli widzisz 'FORMA: slověnьnah | GRAMATYKA: ... locative | plural', MUSISZ użyć 'slověnьnah'.
+3. Nie poprawiaj form, które wydają Ci się błędne. Twoje zdanie ma być identyczne z formami w tabeli.
+4. Szyk: Przymiotnik przed rzeczownikiem.
+5. Jeśli brakuje formy, napisz (ne najdeno).
 
-TEKST: "{user_input}" """
+TEKST DO ZŁOŻENIA: "{user_input}" """
 
         try:
             response = client.chat.completions.create(
@@ -135,20 +119,19 @@ TEKST: "{user_input}" """
                     {"role": "user", "content": user_input}
                 ],
                 temperature=0,
-                max_tokens=1000
+                max_tokens=500
             )
 
             translation = response.choices[0].message.content.strip()
-
             st.markdown("### Vynik perklada:")
             st.success(translation)
             
-            with st.expander("Szczegóły analizy tabel"):
-                st.text(grammar_str if grammar_str else "Brak pasujących wzorów w vuzor.json")
+            with st.expander("Dane użyte do budowy zdania"):
+                st.text(grammar_str)
 
         except Exception as e:
-            st.error(f"Błąd API: {e}")
+            st.error(f"Błąd: {e}")
 
-# ================== STOPKA (NAPRAWIONA) ==================
+# ================== STOPKA ==================
 st.divider()
-st.caption(f"Baza danych: {len(osnova_raw)} słów podstawowych | {len(vuzor_list)} form gramatycznych.")
+st.caption(f"Baza danych: {len(osnova_raw)} słów | {len(vuzor_list)} form gramatycznych.")
