@@ -18,7 +18,7 @@ st.markdown("""
 
 client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 
-# ================== ŁADOWANIE BAZY ==================
+# ================== OPTYMALIZACJA DANYCH ==================
 @st.cache_data
 def load_database():
     def load_json(name):
@@ -28,59 +28,55 @@ def load_database():
 
 DATA = load_database()
 
-# ================== PRZYGOTOWANIE KONTEKSTU ==================
-def get_precise_dictionary(text):
-    # Wyciągamy tylko słowa (bez znaków specjalnych i linków) do szukania w bazie
+def get_mini_context(text):
+    # Szukamy tylko konkretnych słów, ograniczając liczbę rekordów do minimum
     words = re.findall(r'\b\w+\b', text.lower())
     matches = []
     seen = set()
 
     for w in words:
-        stem = w[:4] if len(w) >= 4 else w
+        count = 0
         for entry in DATA:
             pl = entry.get("polish", "").lower()
-            if w == pl or (len(w) >= 4 and pl.startswith(stem)):
+            if w == pl:
                 key = (entry['polish'], entry['slovian'], entry.get('type and case', ''))
                 if key not in seen:
                     matches.append(entry)
                     seen.add(key)
+                    count += 1
+            if count >= 5: break # Max 5 form na jedno słowo, by nie zapchać limitu 413
     return matches
 
-# ================== INTERFEJS I LOGIKA ==================
+# ================== LOGIKA TŁUMACZENIA ==================
+
 st.title("Perkladačь slověnьskogo ęzyka")
-user_input = st.text_area("Vupiši tekst:", placeholder="W moim ogrodzie (100% poprawnie).", height=150)
+user_input = st.text_area("Vupiši tekst:", placeholder="W moim ogrodzie 10+5%.", height=150)
 
 if user_input:
-    with st.spinner("Przetwarzanie tekstu z zachowaniem formatowania..."):
-        dictionary = get_precise_dictionary(user_input)
+    with st.spinner("Tłumaczenie (optymalizacja limitów)..."):
+        mini_dict = get_mini_context(user_input)
         
+        # Tworzymy bardzo krótki słownik
         formatted_db = "\n".join([
-            f"- PL: {m['polish']} | SL: {m['slovian']} | TAG: {m.get('type and case', '')}"
-            for m in dictionary
+            f"{m['polish']}={m['slovian']} ({m.get('type and case', '')})"
+            for m in mini_dict
         ])
 
-        system_prompt = f"""Jesteś precyzyjnym tłumaczem. 
-TWOJE ZADANIE: Przetłumacz słowa na język prasłowiański, ale ZACHOWAJ NIENARUSZONE:
-1. Wielkość liter (jeśli polskie słowo jest z dużej, słowiańskie też musi być).
-2. Interpunkcję (kropki, przecinki, nawiasy).
-3. Znaki matematyczne (+, =, %, cyfry).
-4. Linki i adresy URL.
-5. Dokładne odstępy i znaki nowej linii.
-
-DANE SŁOWNIKOWE:
+        system_prompt = f"""Jesteś tłumaczem. Przetłumacz tekst, zachowując ORYGINALNE SPACJE, WIELKOŚĆ LITER I INTERPUNKCJĘ.
+Dane:
 {formatted_db}
 
-ZASADY GRAMATYKI:
-- 'w' -> 'Vu'
-- Po 'Vu' szukaj formy 'noun' + 'locative' (np. 'obgordě' zamiast 'obgordjati').
-- Słowo 'są' -> 'sǫtь'.
-- Jeśli słowa nie ma w danych, zostaw polskie słowo w nawiasie (nie najdeno).
-
-ODPOWIEDZ TYLKO PRZETŁUMACZONYM TEKSTEM."""
+Zasady:
+1. 'w'/'W' -> 'Vu'.
+2. Po 'Vu' użyj formy 'noun' + 'locative' (np. 'obgordě').
+3. Nie tłumacz linków ani matematyki.
+4. Jeśli brak słowa, zostaw polskie.
+Zwróć TYLKO wynik."""
 
         try:
+            # Używamy mniejszego modelu, który ma wyższe limity TPM
             response = client.chat.completions.create(
-                model="openai/gpt-oss-120b",
+                model="llama3-8b-8192", 
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_input}
@@ -88,14 +84,14 @@ ODPOWIEDZ TYLKO PRZETŁUMACZONYM TEKSTEM."""
                 temperature=0
             )
             
-            translation = response.choices[0].message.content.strip()
             st.markdown("### Vynik perklada:")
-            st.success(translation)
+            st.success(response.choices[0].message.content.strip())
             
         except Exception as e:
-            st.error(f"Błąd: {e}")
+            if "413" in str(e):
+                st.error("Zbyt długi tekst! Skróć go lub usuń skomplikowane słowa.")
+            else:
+                st.error(f"Błąd: {e}")
 
-    with st.expander("Szczegóły techniczne"):
-        st.write("Wykryte słowa do tłumaczenia:")
-        st.table(dictionary)
-
+    with st.expander("Użyte rekordy (max 5 na słowo)"):
+        st.table(mini_dict)
