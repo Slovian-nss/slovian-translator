@@ -77,6 +77,9 @@ ZASADY TŁUMACZENIA, PRZYKŁAD POPRAWNY:
 Input: W moim ogrodzie.
 Output: Vu mojimь obgordě.
 
+Input: W ogrodach są ludzie.
+Output: Vu obgorděh sǫtь ljudьje.
+
 Input: W moim mieście.
 Output: Vu mojimь gordě.
 
@@ -107,4 +110,5 @@ TWOJE ZADANIE: Przetłumacz zdanie użytkownika, zachowując powyższe zasady.""
     with st.expander("Zobacz bazę gramatyczną użytą do tego tłumaczenia"):
         st.write("Te dane zostały wysłane do AI jako jedyne źródło prawdy:")
         st.table(dictionary_context)
+
 
