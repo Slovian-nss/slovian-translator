@@ -93,7 +93,7 @@ Zasady: szyk przymiotnik przed rzeczownikiem, zachowaj interpunkcję i wielkoś�
 
         try:
             chat = client.chat.completions.create(
-                model="llama-3.1-70b-versatile",   # poprawiony model Groq
+                model="openai/gpt-oss-120b",   # poprawiony model Groq
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": f"Tekst: {user_input}"}
@@ -106,3 +106,4 @@ Zasady: szyk przymiotnik przed rzeczownikiem, zachowaj interpunkcję i wielkoś�
             st.success(result)
         except Exception as e:
             st.error(f"Błąd: {e}")
+
