@@ -4,143 +4,130 @@ import os
 import re
 from groq import Groq
 
-# ================== 1. KONFIGURACJA WIZUALNA ==================
-st.set_page_config(page_title="Ekspercki Perkladačь", layout="wide")
+# ================== 1. KONFIGURACJA I MAPOWANIE ZNAKÓW ==================
+st.set_page_config(page_title="Ekspercki Perkladačь (Hoenir Engine)", layout="wide")
 
-st.markdown("""
-<style>
-    .main {background-color: #0e1117;}
-    .stTextInput input {background-color: #1a1a1a; color: #dcdcdc; border-radius: 8px;}
-    .stSuccess {background-color: #152b1b; color: #4ade80; border: 1px solid #22c55e;}
-    .debug-box {background-color: #262730; padding: 10px; border-radius: 5px; font-family: monospace; font-size: 0.85rem;}
-</style>
-""", unsafe_allow_html=True)
+# Tabela konwersji znaków (Normalizacja orthografii na słowiańską)
+ORTHO_MAP = {
+    'ą': 'ę', 'ć': 'ć', 'ę': 'ę', 'ł': 'l', 'ń': 'n', 
+    'ó': 'o', 'ś': 's', 'ź': 'z', 'ż': 'z'
+}
+
+def normalize_to_slovian(text):
+    """Zamienia polskie znaki na ich słowiańskie odpowiedniki zgodnie z bazą."""
+    for pl, sl in ORTHO_MAP.items():
+        text = text.replace(pl, sl)
+    return text
 
 # ================== 2. POŁĄCZENIE Z API ==================
 try:
     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 except Exception:
-    st.error("Błąd: Brak klucza GROQ_API_KEY w st.secrets.")
+    st.error("Błąd: Brak klucza GROQ_API_KEY.")
     st.stop()
 
-# ================== 3. BEZPIECZNY SILNIK DANYCH ==================
+# ================== 3. ŁADOWANIE DANYCH (ZABEZPIECZONE) ==================
 @st.cache_data
 def load_full_database():
     def read_json_safe(path):
-        if not os.path.exists(path):
-            return []
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                # Filtrujemy tylko słowniki, aby uniknąć błędów typu 'list indices must be integers'
-                return [item for item in data if isinstance(item, dict)]
-        except Exception as e:
-            st.warning(f"Problem z plikiem {path}: {e}")
-            return []
-    
+        if not os.path.exists(path): return []
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            return [item for item in data if isinstance(item, dict)]
     return read_json_safe("osnova.json"), read_json_safe("vuzor.json")
 
 osnova_db, vuzor_db = load_full_database()
 
-# ================== 4. LOGIKA MAPOWANIA MORFOLOGICZNEGO ==================
+# ================== 4. SILNIK LOGICZNY HOENIRA ==================
 
-def translate_logic(text):
-    # KROK A: AI jako analityk gramatyczny (nie tłumacz!)
-    # Prosimy AI o rozbicie zdania na parametry, które rozpozna nasz skrypt
-    analysis_prompt = f"""Analyze the following Polish sentence for translation.
-For each word return ONLY a line in format: polish_word | case | number | gender
-Use these English tags:
-- Cases: nominative, genitive, dative, accusative, instrumental, locative, vocative
-- Number: singular, plural
-- Gender: masculine, feminine, neuter
+def hoenir_engine(text):
+    # KROK 1: Analiza morfologiczna (AI tylko taguje gramatykę)
+    analysis_prompt = f"""Analyze the Polish sentence. 
+Return ONLY: polish_word | case | number | gender | person | tense
+Tags: nominative, genitive, dative, accusative, instrumental, locative, vocative
+Number: singular, plural
+Gender: masculine, feminine, neuter
 
 Sentence: {text}"""
 
     try:
-        chat_completion = client.chat.completions.create(
+        chat = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[{"role": "user", "content": analysis_prompt}],
             temperature=0
         )
-        raw_analysis = chat_completion.choices[0].message.content
+        analysis_results = chat.choices[0].message.content.strip().split('\n')
     except Exception as e:
-        return f"Błąd komunikacji z AI: {e}", []
+        return f"Błąd AI: {e}", []
 
-    final_sentence = []
-    logs = []
+    final_result = []
+    debug_logs = []
 
-    # KROK B: Przetwarzanie linii po linii
-    lines = raw_analysis.strip().split('\n')
-    for line in lines:
+    for line in analysis_results:
         if "|" not in line: continue
-        
-        # Oczyszczanie danych z analizy
         parts = [p.strip().lower() for p in line.split('|')]
         if len(parts) < 3: continue
         
-        pl_word = re.sub(r'[^\w\s]', '', parts[0]) # usunięcie interpunkcji
-        target_case = parts[1]
-        target_number = parts[2]
+        pl_word = re.sub(r'[^\w\s]', '', parts[0])
+        case_tag, num_tag = parts[1], parts[2]
 
-        # 1. Znajdź rdzeń (slovian) w osnova.json
+        # A. Szukanie rdzenia w osnova.json
         slov_root = None
         for entry in osnova_db:
             if entry.get('polish', '').lower() == pl_word:
                 slov_root = entry.get('slovian')
                 break
         
-        # 2. Jeśli znaleźliśmy rdzeń, szukamy DOKŁADNEJ formy w vuzor.json
+        # B. Mapowanie formy z vuzor.json (Rygorystyczne)
         if slov_root:
-            matched_form = None
+            best_match = None
             for pattern in vuzor_db:
-                info_text = pattern.get("type and case", "").lower()
-                form_value = pattern.get("slovian", "")
+                v_info = pattern.get("type and case", "").lower()
+                v_form = pattern.get("slovian", "")
                 
-                # Warunki: słowo bazowe musi być w opisie, a przypadek i liczba muszą się zgadzać
-                if (f"'{slov_root}'" in info_text or slov_root == pattern.get("slovian")) \
-                   and target_case in info_text \
-                   and target_number in info_text:
-                    matched_form = form_value
+                # Warunek Hoenira: Rdzeń musi być identyczny, a tagi muszą się zgadzać
+                if (f"'{slov_root}'" in v_info or slov_root == v_form) and \
+                   case_tag in v_info and num_tag in v_info:
+                    best_match = v_form
                     break
             
-            if matched_form:
-                final_sentence.append(matched_form)
-                logs.append(f"✅ DOPASOWANO: {pl_word} -> {matched_form} ({target_case}, {target_number})")
+            if best_match:
+                # Normalizacja końcowa (usuwanie polskich liter z wyniku)
+                final_word = normalize_to_slovian(best_match)
+                final_result.append(final_word)
+                debug_logs.append(f"✅ {pl_word} -> {final_word} ({case_tag}, {num_tag})")
             else:
-                # Jeśli brak w vuzor, bierzemy formę bazową z oznaczeniem
-                final_sentence.append(f"{slov_root}*")
-                logs.append(f"⚠️ BRAK ODMIAY: Znaleziono rdzeń '{slov_root}', ale brak formy dla {target_case} {target_number}")
+                # Jeśli brak w vuzor, wymuszamy normalizację rdzenia
+                safe_root = normalize_to_slovian(slov_root)
+                final_result.append(f"{safe_root}?")
+                debug_logs.append(f"⚠️ Brak odmiany dla '{slov_root}'. Użyto rdzenia.")
         else:
-            # Obsługa przyimków i słów statycznych (w, na, i, etc.)
-            statics = {"w": "vu", "na": "na", "z": "iz", "za": "za", "i": "i", "a": "a"}
-            replacement = statics.get(pl_word, pl_word)
-            final_sentence.append(replacement)
-            logs.append(f"ℹ️ STATYCZNE/BRAK: {pl_word} -> {replacement}")
+            # Przyimki i słowa funkcyjne
+            statics = {"w": "vu", "na": "na", "z": "iz", "i": "i", "siła": "sila"}
+            replacement = statics.get(pl_word, normalize_to_slovian(pl_word))
+            final_result.append(replacement)
+            debug_logs.append(f"ℹ️ Słowo stałe/nieznane: {pl_word}")
 
-    return " ".join(final_sentence).capitalize(), logs
+    return " ".join(final_result).capitalize(), debug_logs
 
 # ================== 5. INTERFEJS UŻYTKOWNIKA ==================
 
 st.title("🏛️ Ekspercki Perkladačь (Hoenir Engine)")
-st.markdown("System mapowania morfologicznego: **LLM Analysis + Python Table Mapping**")
+st.markdown("### Precyzyjne mapowanie morfologiczne bez polskich liter")
 
-input_text = st.text_input("Wpisz polskie zdanie do przetłumaczenia:", value="W Słowianach siła.")
+input_sentence = st.text_input("Wpisz zdanie po polsku:", value="W Słowianach siła.")
 
-if input_text:
-    with st.spinner("Trwa analiza morfologiczna i przeszukiwanie tabel..."):
-        translated_text, debug_logs = translate_logic(input_text)
+if input_sentence:
+    with st.spinner("Przetwarzanie przez silnik Hoenira..."):
+        translated, logs = hoenir_engine(input_sentence)
         
         st.write("### Wynik tłumaczenia:")
-        st.success(translated_text)
+        # Renderowanie wyniku w zielonej ramce, jak na Twoich screenach
+        st.success(translated)
         
-        with st.expander("Szczegóły techniczne mapowania (Logi silnika)"):
-            for log in debug_logs:
-                st.markdown(f"<div class='debug-box'>{log}</div>", unsafe_allow_html=True)
+        with st.expander("Szczegóły mapowania (Logi silnika)"):
+            for l in logs:
+                st.write(l)
 
-# Stopka informacyjna
 st.divider()
-col1, col2 = st.columns(2)
-with col1:
-    st.caption(f"Baza rdzeni (osnova.json): {len(osnova_db)} rekordów")
-with col2:
-    st.caption(f"Baza odmian (vuzor.json): {len(vuzor_db)} rekordów")
+st.caption(f"Status: {len(osnova_db)} rdzeni | {len(vuzor_db)} form gramatycznych.")
