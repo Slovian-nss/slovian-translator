@@ -2,128 +2,102 @@ import streamlit as st
 import json
 import os
 import re
-from collections import defaultdict
 from groq import Groq
 
-# ================== KONFIGURACJA STRONY ==================
+# ================== KONFIGURACJA ==================
 st.set_page_config(page_title="Perkladačь slověnьskogo ęzyka", layout="wide")
 
-# Stylizacja zgodna z Twoim interfejsem
-st.markdown("""
-<style>
-    .main {background-color: #0e1117;}
-    .stTextArea textarea {background-color: #1a1a1a; color: #dcdcdc; font-size: 1.1rem; border-radius: 10px;}
-    .stSuccess {background-color: #152b1b; color: #4ade80; border: 1px solid #22c55e; border-radius: 10px; padding: 15px;}
-</style>
-""", unsafe_allow_html=True)
-
-# ================== POŁĄCZENIE Z API ==================
 try:
     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-except Exception as e:
-    st.error("Błąd klucza API. Sprawdź st.secrets.")
+except Exception:
+    st.error("Błąd API. Sprawdź klucz w secrets.")
     st.stop()
 
-# ================== ŁADOWANIE DANYCH ==================
+# ================== SILNIK DANYCH ==================
 @st.cache_data
-def load_data():
-    def read_json(path):
-        if os.path.exists(path):
-            with open(path, "r", encoding="utf-8") as f:
-                return json.load(f)
+def load_full_db():
+    def rj(p):
+        if os.path.exists(p):
+            with open(p, "r", encoding="utf-8") as f: return json.load(f)
         return []
-    o_raw = read_json("osnova.json")
-    v_raw = read_json("vuzor.json")
+    return rj("osnova.json"), rj("vuzor.json")
+
+osnova, vuzor = load_full_db()
+
+# ================== LOGIKA TŁUMACZENIA (Ekspercka) ==================
+
+def translate_expert(text):
+    # KROK 1: Analiza morfologiczna zdania przez LLM
+    # Model nie tłumaczy, tylko rozbija polskie zdanie na parametry
+    analysis_prompt = f"""Przeanalizuj gramatycznie polskie zdanie. 
+Dla każdego słowa (z wyjątkiem spójników) wypisz: polskie_slowo | przypadek | liczba | rodzaj.
+Używaj angielskich nazw: nominative, genitive, dative, accusative, instrumental, locative, vocative.
+Liczba: singular, plural. Rodzaj: masculine, feminine, neuter.
+
+Zdanie: {text}"""
+
+    response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[{"role": "user", "content": analysis_prompt}],
+        temperature=0
+    )
+    analysis = response.choices[0].message.content
     
-    # Słownik PL -> SL_BASE
-    dic = defaultdict(list)
-    for entry in o_raw:
-        pol = entry.get("polish", "").lower().strip()
-        if pol:
-            dic[pol].append(entry)
-    return dic, v_raw, o_raw
-
-dictionary, vuzor_list, osnova_raw = load_data()
-
-# ================== LOGIKA "RAG" (Dopasowanie Gramatyczne) ==================
-def get_strict_context(text, dic, vuzory):
-    words = re.findall(r'\b\w+\b', text.lower())
-    found_mappings = []
-    available_forms = []
-    seen_bases = set()
-
-    for w in words:
-        entries = dic.get(w, [])
-        # Fuzzy matching jeśli nie ma dokładnego
-        if not entries and len(w) >= 4:
-            pref = w[:4]
-            for k in dic:
-                if k.startswith(pref):
-                    entries.extend(dic[k])
-
-        for e in entries:
-            found_mappings.append(e)
-            s_base = e.get("slovian")
-            if s_base and s_base not in seen_bases:
-                # Szukamy absolutnie wszystkich form dla tego rdzenia
-                for v in vuzory:
-                    info = v.get("type and case", "")
-                    forma = v.get("slovian", "")
-                    # Szukamy rdzenia w cudzysłowie w kolumnie info (tak jak w Twoim arkuszu)
-                    if f"'{s_base}'" in info or s_base == forma:
-                        available_forms.append(f"FORM: {forma} | GRAMMAR: {info}")
-                seen_bases.add(s_base)
+    # KROK 2: Wyszukiwanie w Twojej bazie (Hard-match)
+    translated_words = []
+    lines = analysis.split('\n')
     
-    return found_mappings, available_forms
+    debug_info = []
+
+    for line in lines:
+        if "|" not in line: continue
+        parts = [p.strip().lower() for p in line.split('|')]
+        if len(parts) < 4: continue
+        
+        pl_word, case, num, gender = parts[0], parts[1], parts[2], parts[3]
+        
+        # Znajdź słowo słowiańskie (rdzeń)
+        slov_base = next((item['slovian'] for item in osnova if item['polish'].lower() == pl_word), None)
+        
+        if slov_base:
+            # Szukaj konkretnej formy w vuzor.json
+            # Sprawdzamy czy w 'type and case' są wszystkie wymagane tagi
+            found_form = None
+            for v in vuzor:
+                info = v.get("type and case", "").lower()
+                if slov_base in info and case in info and num in info:
+                    found_form = v.get("slovian")
+                    break
+            
+            if found_form:
+                translated_words.append(found_form)
+                debug_info.append(f"✅ {pl_word} -> {found_form} ({case}, {num})")
+            else:
+                translated_words.append(f"({slov_base}?)")
+                debug_info.append(f"⚠️ Brak formy dla {slov_base} ({case}, {num})")
+        else:
+            # Obsługa przyimków (np. w -> vu)
+            prepositions = {"w": "vu", "na": "na", "z": "iz", "za": "za"}
+            translated_words.append(prepositions.get(pl_word, pl_word))
+
+    return " ".join(translated_words), debug_info
 
 # ================== INTERFEJS ==================
-st.title("🏛️ Perkladačь slověnьskogo ęzyka")
-st.write("### Precyzyjne tłumaczenie z wykorzystaniem tabel odmian")
+st.title("🏛️ Ekspercki Perkladačь")
+st.markdown("Algorytm mapowania morfologicznego (Logic: Hoenir-inspired)")
 
-user_input = st.text_area("Vupiši slovo alibo rěčenьje (PL):", placeholder="W Słowianach siła.", height=150)
+user_input = st.text_area("Wpisz tekst po polsku:", placeholder="W Słowianach siła.")
 
 if user_input:
-    with st.spinner("Weryfikacja form gramatycznych w bazie..."):
-        mappings, grammar_pool = get_strict_context(user_input, dictionary, vuzor_list)
+    with st.spinner("Analiza morfologiczna..."):
+        result, debug = translate_expert(user_input)
         
-        grammar_context = "\n".join(grammar_pool)
+        st.subheader("Wynik:")
+        st.success(result)
+        
+        with st.expander("Analiza Machine Learning (Krok po kroku)"):
+            for d in debug:
+                st.write(d)
 
-        # PROMPT "ZERO-TOLERANCE" - Model staje się tylko parserem
-        system_prompt = f"""Jesteś rygorystycznym kompilatorem języka słowiańskiego. 
-Twoim zadaniem jest złożenie zdania wyłącznie z form podanych w DANYCH GRAMATYCZNYCH.
-
-DANE GRAMATYCZNE:
-{grammar_context}
-
-INSTRUKCJA DZIAŁANIA:
-1. Przeanalizuj polskie zdanie: "{user_input}"
-2. Dla każdego słowa określ: PRZYPADEK (Case), LICZBĘ (Number), RODZAJ (Gender).
-3. Znajdź w DANYCH GRAMATYCZNYCH formę, która DOKŁADNIE odpowiada tym cechom.
-   PRZYKŁAD: "w Słowianach" -> potrzebujesz 'locative' + 'plural'. 
-   Jeśli w danych jest "FORM: slověnьnah | GRAMMAR: ... locative | plural", MUSISZ użyć "slověnьnah".
-4. Jeśli forma nie istnieje w danych, wstaw (brak_formy).
-5. ZAKAZ: Nie zmieniaj końcówek, nie twórz własnych słów, nie używaj wiedzy ogólnej.
-6. SZYK: Przymiotnik zawsze przed rzeczownikiem.
-7. ZWRÓĆ TYLKO ZDANIE. BEZ KOMENTARZY."""
-
-        try:
-            response = client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                messages=[{"role": "system", "content": system_prompt}],
-                temperature=0.0 # Całkowity brak kreatywności
-            )
-
-            result = response.choices[0].message.content.strip()
-            
-            st.write("### Vynik perklada:")
-            st.success(result)
-            
-            with st.expander("Dane użyte przez AI (Weryfikacja tabel)"):
-                st.code(grammar_context if grammar_context else "Nie znaleziono powiązanych form.")
-
-        except Exception as e:
-            st.error(f"Błąd: {e}")
-
-# ================== STOPKA (Zmienne globalne) ==================
 st.divider()
-st.caption(f"Baza danych: {len(osnova_raw)} słów podstawowych | {len(vuzor_list)} form gramatycznych.")
+st.caption(f"Status bazy: {len(osnova)} rdzeni | {len(vuzor)} form odmiany.")
