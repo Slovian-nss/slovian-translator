@@ -2,119 +2,137 @@ import streamlit as st
 import json
 import os
 import re
+from collections import defaultdict
 from groq import Groq
 
-# ================== 1. KONFIGURACJA SYSTEMU ==================
-st.set_page_config(page_title="Ekspercki Perkladačь (Hoenir Engine)", layout="wide")
+st.set_page_config(page_title="Perkladačь slověnьskogo ęzyka", layout="centered")
 
-# Mapowanie ortograficzne dla zapewnienia czystości słowiańskiej formy
-def clear_orthography(text):
-    mapping = {'ą': 'ę', 'ć': 'ć', 'ł': 'l', 'ń': 'n', 'ó': 'o', 'ś': 's', 'ź': 'z', 'ż': 'z'}
-    for pl, sl in mapping.items():
-        text = text.replace(pl, sl)
-    return text
+st.markdown("""
+<style>
+.main {background:#0e1117}
+.stTextArea textarea {background:#1a1a1a;color:#dcdcdc}
+</style>
+""", unsafe_allow_html=True)
 
-# ================== 2. POŁĄCZENIE Z MOZGIEM AI ==================
-try:
-    client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-except Exception:
-    st.error("Błąd: Skonfiguruj GROQ_API_KEY w Streamlit Secrets.")
-    st.stop()
+# ================== GROQ ==================
 
-# ================== 3. ZASOBY DANYCH (OSNOVA & VUZOR) ==================
+client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+
+# ================== ŁADOWANIE ==================
+
 @st.cache_data
-def load_machine_data():
-    def get_data(file):
-        if not os.path.exists(file): return []
-        with open(file, "r", encoding="utf-8") as f:
-            return [obj for obj in json.load(f) if isinstance(obj, dict)]
-    return get_data("osnova.json"), get_data("vuzor.json")
+def load_json(filename):
+    if not os.path.exists(filename):
+        return []
+    with open(filename, "r", encoding="utf-8") as f:
+        return json.load(f)
 
-osnova_db, vuzor_db = load_machine_data()
+osnova = load_json("osnova.json")
+vuzor  = load_json("vuzor.json")
 
-# ================== 4. SILNIK TŁUMACZENIA MASZYNOWEGO ==================
+# ================== INDEKS SŁOWNIKA ==================
 
-def hoenir_translate_engine(polish_text):
-    # KROK 1: Lingwistyczna dekompozycja zdania (LLM Analysis)
-    # Model AI rozpoznaje przypadki, liczby i rodzaje
-    analysis_prompt = f"""Analyze the Polish sentence. 
-Return ONLY lines in format: original_word | case | number | gender
-Use tags: nominative, genitive, dative, accusative, instrumental, locative, vocative.
-Number: singular, plural. Gender: masculine, feminine, neuter.
+@st.cache_data
+def build_dictionary(data):
+    dic = defaultdict(list)
 
-Sentence: {polish_text}"""
+    for entry in data:
+        key = entry.get("polish","").lower().strip()
+        if key:
+            dic[key].append(entry)
 
-    try:
-        completion = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[{"role": "user", "content": analysis_prompt}],
-            temperature=0 # Blokada kreatywności na rzecz precyzji
+    return dic
+
+dictionary = build_dictionary(osnova)
+
+# ================== WYSZUKIWANIE ==================
+
+def get_context(text, dic):
+
+    words = re.findall(r'\w+', text.lower())
+    results = []
+    seen = set()
+
+    for w in words:
+
+        # dokładne dopasowanie
+        if w in dic:
+            for e in dic[w]:
+                key = (e["polish"], e["slovian"])
+                if key not in seen:
+                    results.append(e)
+                    seen.add(key)
+
+        # prefix search
+        elif len(w) >= 4:
+            pref = w[:4]
+
+            for base, entries in dic.items():
+                if base.startswith(pref):
+
+                    for e in entries:
+                        key = (e["polish"], e["slovian"])
+
+                        if key not in seen:
+                            results.append(e)
+                            seen.add(key)
+
+    return results
+
+# ================== INTERFEJS ==================
+
+st.title("Perkladačь slověnьskogo ęzyka")
+
+user_input = st.text_area(
+    "Vupiši slovo alibo rěčenьje:",
+    placeholder="Np. W miastach siła.",
+    height=150
+)
+
+if user_input:
+
+    with st.spinner("Przetwarzanie..."):
+
+        matches = get_context(user_input, dictionary)
+
+        mapping = "\n".join(
+            f"PL '{m['polish']}' → SL '{m['slovian']}'"
+            for m in matches
         )
-        morphology = completion.choices[0].message.content.strip().split('\n')
-    except Exception as e:
-        return f"Błąd ML: {e}", []
 
-    translated_chain = []
-    process_logs = []
+        system_prompt = f"""
+Jesteś precyzyjnym tłumaczem na język prasłowiański.
 
-    # KROK 2: Fizyczne mapowanie na tabele (Database Retrieval)
-    for entry in morphology:
-        if "|" not in entry: continue
-        parts = [p.strip().lower() for p in entry.split('|')]
-        if len(parts) < 3: continue
-        
-        pl_word = re.sub(r'[^\w\s]', '', parts[0])
-        req_case, req_num = parts[1], parts[2]
+Używasz WYŁĄCZNIE słów z danych.
 
-        # Wyszukiwanie rdzenia w osnova.json
-        base_slovian = next((item['slovian'] for item in osnova_db if item.get('polish', '').lower() == pl_word), None)
-        
-        if base_slovian:
-            # Wyszukiwanie precyzyjnej formy w vuzor.json
-            found_form = None
-            for pattern in vuzor_db:
-                v_case_info = pattern.get("type and case", "").lower()
-                v_word = pattern.get("slovian", "")
-                
-                # Warunek: Rdzeń musi być powiązany z wzorem, a gramatyka musi się zgadzać
-                if (f"'{base_slovian}'" in v_case_info or base_slovian == v_word) and \
-                   req_case in v_case_info and req_num in v_case_info:
-                    found_form = v_word
-                    break
-            
-            if found_form:
-                clean_word = clear_orthography(found_form)
-                translated_chain.append(clean_word)
-                process_logs.append(f"MAP: {pl_word} -> {clean_word} [{req_case}, {req_num}]")
-            else:
-                translated_chain.append(f"{clear_orthography(base_slovian)}?")
-                process_logs.append(f"MISS: Brak formy '{base_slovian}' dla {req_case} {req_num}")
-        else:
-            # Obsługa słów statycznych (przyimki itp.)
-            static_map = {"w": "vu", "na": "na", "z": "iz", "i": "i", "siła": "sila"}
-            token = static_map.get(pl_word, clear_orthography(pl_word))
-            translated_chain.append(token)
-            process_logs.append(f"STATIC: {pl_word} -> {token}")
+DANE SŁOWNIKOWE:
+{mapping}
 
-    return " ".join(translated_chain).capitalize(), process_logs
+WZORY:
+{json.dumps(vuzor[:20], ensure_ascii=False)}
 
-# ================== 5. INTERFEJS UŻYTKOWNIKA (UX) ==================
+ZASADY BEZWZGLĘDNE:
+1. Jeśli nie ma odmiany słowiańskiego słowa (lub jego podstawowej odmiany), to wtedy napisz w jego miejscu (ne najdeno slova) i tłumacz dalej to co możesz.
+2. SZYK: Przymiotniki (oznaczone są one jako: adjective - pridavьnik) i przysłówki (oznaczone są one jako: adverb - prislovok) zawsze są przed rzeczownikami (oznaczone są one jako: noun - jimenьnik).
+3. FORMAT: Zachowaj interpunkcję, odwzorowanie, wielkość liter, spacje, odstępy, znaki matematyczne, linkowanie i brak dodatkowego komentarza."""
 
-st.title("🏛️ Perkladačь slověnьskogo ęzyka")
-st.markdown("#### System Hoenir: Analiza ML + Mapowanie Tablicowe")
+        try:
 
-user_sentence = st.text_input("Vupiši slovo alibo rěčenьje (PL):", value="W Słowianach siła.")
+            chat = client.chat.completions.create(
+                model="openai/gpt-oss-120b",
+                messages=[
+                    {"role":"system","content":system_prompt},
+                    {"role":"user","content":user_input}
+                ],
+                temperature=0,
+                max_tokens=800
+            )
 
-if user_sentence:
-    with st.spinner("Uruchamianie silnika morfologicznego..."):
-        output, logs = hoenir_translate_engine(user_sentence)
-        
-        st.write("### Vynik perklada:")
-        st.success(output)
-        
-        with st.expander("Logi procesowe (Uczenie maszynowe i mapowanie)"):
-            for log in logs:
-                st.code(log)
+            result = chat.choices[0].message.content.strip()
 
-st.divider()
-st.caption(f"Status bazy: {len(osnova_db)} słów | {len(vuzor_db)} form odmiany. Tryb: Machine Learning.")
+            st.markdown("### Vynik perklada:")
+            st.success(result)
+
+        except Exception as e:
+            st.error(f"Blǫd perklada: {e}")
+

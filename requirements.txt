@@ -1,6 +1,2 @@
-openai
-python-dotenv
 streamlit
-argostranslate
-sentencepiece
-groq
+openai>=1.0.0
