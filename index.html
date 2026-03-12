@@ -1,250 +1,91 @@
-<!DOCTYPE html>
-<html lang="pl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Perkladačь slověnьskogo ęzyka</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --primary: #0055ff;
-            --bg: #f3f6f9;
-            --text: #1a1a1a;
-            --border: #d1d9e0;
-        }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--bg);
-            color: var(--text);
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 1100px;
-            width: 100%;
-            background: white;
-            padding: 30px;
-            border-radius: 16px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
-        }
-
-        h1 { font-weight: 600; text-align: center; margin-bottom: 30px; }
-
-        .translator-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-
-        .input-group { position: relative; }
-
-        .label-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-            font-weight: 600;
-        }
-
-        textarea {
-            width: 100%;
-            height: 250px;
-            padding: 15px;
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            font-size: 16px;
-            resize: none;
-            box-sizing: border-box;
-            outline: none;
-            transition: border 0.3s;
-        }
-
-        textarea:focus { border-color: var(--primary); }
-
-        .btn-small {
-            background: #eee;
-            border: none;
-            padding: 5px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 13px;
-        }
-
-        .btn-small:hover { background: #ddd; }
-
-        .main-btn {
-            grid-column: span 2;
-            padding: 15px;
-            background: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-size: 18px;
-            font-weight: 600;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-
-        .admin-panel {
-            margin-top: 50px;
-            padding-top: 30px;
-            border-top: 1px solid #eee;
-        }
-
-        .admin-grid {
-            display: grid;
-            grid-template-columns: 2fr 2fr 1fr;
-            gap: 10px;
-            margin-top: 10px;
-        }
-
-        .input-admin {
-            padding: 10px;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-        }
-
-        .status { padding: 10px; border-radius: 8px; margin-top: 10px; display: none; }
-        .success { background: #d4edda; color: #155724; display: block; }
-        .error { background: #f8d7da; color: #721c24; display: block; }
-    </style>
-</head>
-<body>
-
-<div class="container">
-    <h1>🌐 Perkladačь slověnьskogo ęzyka</h1>
-
-    <div style="margin-bottom: 20px; text-align: center;">
-        <label><input type="radio" name="dir" value="pl_sl" checked> PL ➔ SL</label>
-        <label style="margin-left: 20px;"><input type="radio" name="dir" value="sl_pl"> SL ➔ PL</label>
-    </div>
-
-    <div class="translator-grid">
-        <div class="input-group">
-            <div class="label-bar">
-                <span>Tekst źródłowy</span>
-                <button class="btn-small" id="btnPaste">📋 Wklej</button>
-            </div>
-            <textarea id="srcText" placeholder="Wpisz tekst..."></textarea>
-        </div>
-
-        <div class="input-group">
-            <div class="label-bar">
-                <span>Wynik</span>
-                <button class="btn-small" id="btnCopy">✂️ Kopiuj</button>
-            </div>
-            <textarea id="resText" readonly></textarea>
-        </div>
-
-        <button class="main-btn" onclick="handleTranslate()">🚀 TŁUMACZ</button>
-    </div>
-
-    <div class="admin-panel">
-        <h3>🛠️ Popraw bazę (Admin)</h3>
-        <div style="margin-bottom: 10px;">
-            <input type="password" id="pass" class="input-admin" placeholder="Hasło">
-            <button class="btn-small" id="btnLogin">Zaloguj</button>
-        </div>
-        
-        <div id="adminForm" style="display:none;">
-            <div class="admin-grid">
-                <input type="text" id="newPl" class="input-admin" placeholder="Słowo polskie">
-                <input type="text" id="newSl" class="input-admin" placeholder="Słowo słowiańskie">
-                <button class="main-btn" style="margin:0;" onclick="addToMemory()">✅ Dodaj</button>
-            </div>
-            <div id="statusMsg" class="status"></div>
-        </div>
-    </div>
-</div>
-
 <script>
 let osnova = [];
 let vuzor = {};
 let memory = {};
 
-// 1. POBIERANIE DANYCH Z PLIKÓW JSON
 async function initTranslator() {
     try {
+        // Dodajemy parametr cache: "no-store", aby GitHub nie serwował starych wersji plików JSON
         const [resO, resV, resM] = await Promise.all([
-            fetch('osnova.json').then(r => r.json()),
-            fetch('vuzor.json').then(r => r.json()),
-            fetch('memory.json').then(r => r.json()).catch(() => ({}))
+            fetch('osnova.json', {cache: "no-store"}).then(r => r.json()),
+            fetch('vuzor.json', {cache: "no-store"}).then(r => r.json()),
+            fetch('memory.json', {cache: "no-store"}).then(r => r.json()).catch(() => ({}))
         ]);
         
         osnova = resO;
         vuzor = resV;
         memory = resM;
-        console.log("System gotowy: osnova i vuzor załadowane.");
+        console.log("Bazy załadowane.");
     } catch (e) {
-        console.error("Błąd ładowania baz danych:", e);
+        console.error("Błąd ładowania:", e);
     }
 }
 
 initTranslator();
 
-// 2. LOGIKA ODMIANY (FLEKSJI)
-function flexWord(word, targetLang) {
+function flexWord(word, direction) {
     let lowWord = word.toLowerCase();
 
-    // Najpierw sprawdź pamięć (tłumaczenia ręczne mają priorytet)
+    // 1. Priorytet: Pamięć podręczna (memory.json)
     if (memory[lowWord]) return memory[lowWord];
 
-    // Szukaj w osnova.json
+    // 2. Szukanie w osnova.json
     for (let item of osnova) {
-        // Sprawdzamy czy to słowo pasuje do bazy (uproszczone szukanie rdzenia)
-        if (item.polish.toLowerCase() === lowWord || item.slovian.toLowerCase() === lowWord) {
-            
-            let baseSlovian = item.slovian;
-            let patternName = item.vuzor; // np. "M1" (męski 1)
+        let sourceField = (direction === 'pl_sl') ? 'polish' : 'slovian';
+        let targetField = (direction === 'pl_sl') ? 'slovian' : 'polish';
 
-            // Jeśli wzór istnieje w vuzor.json, pobierz końcówkę dla Mianownika (lub innego przypadku)
-            if (vuzor[patternName]) {
-                // Tutaj implementujemy logikę: rdzeń + końcówka z vuzora
-                // Zakładamy, że vuzor.json ma strukturę {"M1": {"nom": "pusty", "gen": "a"...}}
-                let suffix = vuzor[patternName].nom || ""; 
-                return baseSlovian + suffix;
+        if (item[sourceField].toLowerCase() === lowWord) {
+            let baseResult = item[targetField];
+            
+            // Jeśli tłumaczymy na słowiański i jest wzór odmiany (vuzor)
+            if (direction === 'pl_sl' && item.vuzor && vuzor[item.vuzor]) {
+                let suffix = vuzor[item.vuzor].nom || ""; 
+                return baseResult + suffix;
             }
             
-            return baseSlovian;
+            return baseResult;
         }
     }
-    return word; // Zwróć oryginał, jeśli nie ma w bazie
+    return word; 
 }
 
-// 3. OBSŁUGA INTERFEJSU
 function handleTranslate() {
     const text = document.getElementById('srcText').value;
+    const direction = document.querySelector('input[name="dir"]:checked').value;
     if (!text) return;
 
-    // Rozbijanie na słowa i znaki interpunkcyjne
     const tokens = text.split(/(\W+)/);
     
     const translated = tokens.map(token => {
-        if (/^\W+$/.test(token)) return token; // Jeśli to spacja/kropka - zostaw
+        if (/^\W+$/.test(token)) return token; 
         
-        let result = flexWord(token);
+        let result = flexWord(token, direction);
         
-        // Zachowanie wielkości liter
+        // Logika wielkich liter
         if (token === token.toUpperCase()) return result.toUpperCase();
-        if (token[0] === token[0].toUpperCase()) return result.charAt(0).toUpperCase() + result.slice(1);
+        if (token[0] === token[0].toUpperCase()) {
+            return result.charAt(0).toUpperCase() + result.slice(1);
+        }
         return result;
     });
 
     document.getElementById('resText').value = translated.join("");
 }
 
-// Funkcje pomocnicze dla przycisków
+// Logika przycisków
+document.getElementById('btnPaste').onclick = async () => {
+    const text = await navigator.clipboard.readText();
+    document.getElementById('srcText').value = text;
+};
+
 document.getElementById('btnCopy').onclick = () => {
     navigator.clipboard.writeText(document.getElementById('resText').value);
     alert("Skopiowano!");
 };
+
+document.getElementById('btnLogin').onclick = () => {
+    if (document.getElementById('pass').value === "Rozeta*8") {
+        document.getElementById('adminForm').style.display = "block";
+    }
+};
 </script>
-
-</body>
-</html>
-
