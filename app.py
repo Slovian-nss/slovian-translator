@@ -3,188 +3,154 @@ import json
 import os
 import re
 
+# Ustawienia strony
 st.set_page_config(page_title="Perkladačь slověnьskogo ęzyka", layout="wide")
 
 # =========================
-# STYL (biały jak DeepL)
+# STYL (Minimalizm DeepL)
 # =========================
-
 st.markdown("""
 <style>
-
-body {
-background:white;
-color:black;
-}
-
-textarea {
-background:white !important;
-color:black !important;
-border:1px solid #ccc !important;
-}
-
-input {
-background:white !important;
-color:black !important;
-}
-
+    .stApp { background-color: white; }
+    h1, h2, h3, p, label { color: #1a1a1a !important; }
+    .stTextArea textarea {
+        background-color: #f8f9fa !important;
+        color: #1a1a1a !important;
+        border: 1px solid #e0e0e0 !important;
+        border-radius: 8px !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
 # =========================
-# ŁADOWANIE JSON
+# LOGIKA DANYCH
 # =========================
 
 @st.cache_data
-def load_json(file):
-
-    if not os.path.exists(file):
+def load_all_data():
+    # Ładowanie plików
+    def read_json(path):
+        if os.path.exists(path):
+            with open(path, encoding="utf-8") as f:
+                return json.load(f)
         return {}
 
-    try:
-        with open(file, encoding="utf-8") as f:
-            return json.load(f)
-    except:
-        return {}
+    osnova = read_json("osnova.json")
+    memory = read_json("memory.json")
 
-# =========================
-# ZAPIS DO MEMORY
-# =========================
+    # Budowanie słowników dwukierunkowych
+    pl_to_sl = {}
+    sl_to_pl = {}
 
-def save_memory(source, target):
+    # 1. Dane z osnova.json
+    if isinstance(osnova, list):
+        for item in osnova:
+            p = item.get("polish", "").lower().strip()
+            s = item.get("slovian", "").lower().strip()
+            if p and s:
+                pl_to_sl[p] = s
+                sl_to_pl[s] = p
 
+    # 2. Dane z pamięci (nadpisują podstawę)
+    for p, s in memory.items():
+        pl_to_sl[p.lower()] = s
+        sl_to_pl[s.lower()] = p
+
+    return pl_to_sl, sl_to_pl
+
+def save_memory(source, target, direction):
+    # Prosta baza poprawek
+    memory = {}
     if os.path.exists("memory.json"):
         with open("memory.json", encoding="utf-8") as f:
-            data = json.load(f)
+            memory = json.load(f)
+    
+    # Zapisujemy zawsze w relacji PL: SL dla spójności
+    if direction == "PL -> SL":
+        memory[source.lower()] = target
     else:
-        data = {}
-
-    data[source] = target
+        memory[target.lower()] = source
 
     with open("memory.json", "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+        json.dump(memory, f, ensure_ascii=False, indent=2)
 
 # =========================
-# ŁADOWANIE DANYCH
+# SILNIK TŁUMACZĄCY
 # =========================
 
-osnova = load_json("osnova.json")
-vuzor = load_json("vuzor.json")
-memory = load_json("memory.json")
+def match_case(original, translated):
+    if original.isupper():
+        return translated.upper()
+    if original and original[0].isupper():
+        return translated.capitalize()
+    return translated
 
-dictionary = {}
-
-if isinstance(osnova, list):
-    for item in osnova:
-        if "polish" in item and "slovian" in item:
-            dictionary[item["polish"].lower()] = item["slovian"]
-
-dictionary.update(memory)
-
-# =========================
-# WIELKIE LITERY
-# =========================
-
-def match_case(source, target):
-
-    if source.isupper():
-        return target.upper()
-
-    if source and source[0].isupper():
-        return target.capitalize()
-
-    return target
-
-# =========================
-# TOKENIZACJA
-# =========================
-
-def tokenize(text):
-    return re.findall(r"\w+|[^\w\s]|\s+", text, re.UNICODE)
-
-# =========================
-# TŁUMACZENIE
-# =========================
-
-def translate(text):
-
-    tokens = tokenize(text)
+def translate_engine(text, dictionary):
+    if not text:
+        return ""
+    
+    # Rozbijanie na słowa, zachowując znaki specjalne i spacje
+    tokens = re.split(r'(\W+)', text)
     result = []
 
     for token in tokens:
-
-        word = token.lower()
-
-        if word in dictionary:
-
-            t = dictionary[word]
-            t = match_case(token, t)
-
-            result.append(t)
-
+        low_token = token.lower()
+        if low_token in dictionary:
+            translated_word = dictionary[low_token]
+            result.append(match_case(token, translated_word))
         else:
             result.append(token)
-
+            
     return "".join(result)
 
 # =========================
-# INTERFEJS
+# INTERFEJS UŻYTKOWNIKA
 # =========================
+
+pl_to_sl, sl_to_pl = load_all_data()
 
 st.title("Perkladačь slověnьskogo ęzyka")
 
+# Wybór kierunku
+col_dir1, col_dir2 = st.columns([1, 4])
+with col_dir1:
+    direction = st.radio("Kierunek / Naprjamok:", ["PL -> SL", "SL -> PL"])
+
+# Okna tekstu
 col1, col2 = st.columns(2)
 
 with col1:
-    source_lang = st.selectbox(
-        "Język źródłowy",
-        ["polski", "prasłowiański"]
-    )
+    input_text = st.text_area("Tekst źródłowy:", height=250, placeholder="Wpisz tekst...")
+
+# Wybór słownika na podstawie kierunku
+current_dict = pl_to_sl if direction == "PL -> SL" else sl_to_pl
+
+# Automatyczne tłumaczenie (opcjonalnie przyciskiem)
+if input_text:
+    output_text = translate_engine(input_text, current_dict)
+else:
+    output_text = ""
 
 with col2:
-    target_lang = st.selectbox(
-        "Język docelowy",
-        ["prasłowiański", "polski"]
-    )
-
-text = st.text_area("Tekst", height=200)
-
-if st.button("Tłumacz"):
-    translation = translate(text)
-else:
-    translation = ""
-
-st.text_area("Tłumaczenie", translation, height=200)
+    st.text_area("Tłumaczenie / Perklad:", output_text, height=250, disabled=False)
 
 # =========================
-# POPRAWKI (HASŁO)
+# PANEL MODERATORA
 # =========================
-
 st.markdown("---")
-
-st.subheader("Popraw tłumaczenie (samouczenie)")
-
-password = st.text_input("Hasło", type="password")
-
-if password == "Rozeta*8":
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        src = st.text_input("Słowo źródłowe")
-
-    with col2:
-        trg = st.text_input("Poprawne tłumaczenie")
-
-    if st.button("Dodaj do bazy"):
-
-        if src and trg:
-
-            save_memory(src.lower(), trg)
-
-            st.success("Dodano do pamięci")
-
-else:
-
-    if password != "":
+with st.expander("Panel poprawek (Admin)"):
+    pwd = st.text_input("Hasło", type="password")
+    if pwd == "Rozeta*8":
+        c1, c2 = st.columns(2)
+        with c1:
+            src_word = st.text_input("Słowo polskie")
+        with c2:
+            trg_word = st.text_input("Słowo słowiańskie")
+        
+        if st.button("Zaktualizuj bazę"):
+            if src_word and trg_word:
+                save_memory(src_word, trg_word, "PL -> SL")
+                st.success("Dodano! Odśwież stronę (R), aby zastosować.")
+                st.cache_data.clear()
+    elif pwd != "":
         st.error("Błędne hasło")
