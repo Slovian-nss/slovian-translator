@@ -2,7 +2,16 @@ import streamlit as st
 import json
 import os
 import re
+import requests
+import base64
 from collections import defaultdict
+
+# --- KONFIGURACJA GITHUB (Wypełnij to!) ---
+GITHUB_TOKEN = "TWÓJ_TOKEN_PERSONAL_ACCESS_TUTAJ"
+REPO_OWNER = "Slovian-nss"
+REPO_NAME = "slovian-translator"
+FILE_PATH = "selflearning.json"
+BRANCH = "main"
 
 st.set_page_config(page_title="Perkladačь slověnьskogo ęzyka", layout="centered")
 st.markdown("""
@@ -12,20 +21,31 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-@st.cache_data
-def load_json(filename):
-    if not os.path.exists(filename):
-        return []
-    try:
-        with open(filename, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            return data if isinstance(data, list) else []
-    except:
-        return []
+# Funkcja pomocnicza do pobierania danych z GitHub API
+def get_github_file():
+    url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/contents/{FILE_PATH}"
+    headers = {"Authorization": f"token {GITHUB_TOKEN}"}
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        data = response.json()
+        content = base64.b64decode(data['content']).decode('utf-8')
+        return json.loads(content), data['sha']
+    return [], None
 
-osnova = load_json("osnova.json")
-selflearning = load_json("selflearning.json")
-all_data = osnova + selflearning
+@st.cache_data
+def load_all_data():
+    # Ładujemy podstawę z lokalnego pliku
+    if os.path.exists("osnova.json"):
+        with open("osnova.json", "r", encoding="utf-8") as f:
+            osnova = json.load(f)
+    else:
+        osnova = []
+    
+    # Ładujemy selflearning bezpośrednio z GitHuba, żeby mieć najnowsze dane
+    selflearning, _ = get_github_file()
+    return osnova + selflearning
+
+all_data = load_all_data()
 
 @st.cache_data
 def build_dictionaries(data):
@@ -47,6 +67,7 @@ def translate(text):
     sl_matches = sum(1 for w in words if w in sl_to_pl)
     to_sl = pl_matches >= sl_matches
     dic = pl_to_sl if to_sl else sl_to_pl
+    
     def repl(m):
         w = m.group(0)
         lw = w.lower()
@@ -59,26 +80,54 @@ def translate(text):
             return "(ne najdeno slova)" if to_sl else w
     return re.sub(r'\w+', repl, text)
 
-def save_pair(polish, slovian):
-    entry = {"polish": polish.strip(), "slovian": slovian.strip()}
-    data = load_json("selflearning.json") + [entry]
-    with open("selflearning.json", "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-    st.rerun()
+def save_pair_to_github(polish, slovian):
+    # 1. Pobierz aktualny stan i SHA
+    current_data, sha = get_github_file()
+    
+    # 2. Dodaj nowy wpis
+    new_entry = {"polish": polish.strip(), "slovian": slovian.strip()}
+    current_data.append(new_entry)
+    
+    # 3. Przygotuj dane do wysłania
+    updated_json = json.dumps(current_data, ensure_ascii=False, indent=2)
+    encoded_content = base64.b64encode(updated_json.encode('utf-8')).decode('utf-8')
+    
+    url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/contents/{FILE_PATH}"
+    headers = {"Authorization": f"token {GITHUB_TOKEN}"}
+    payload = {
+        "message": f"Nauka: {polish} -> {slovian}",
+        "content": encoded_content,
+        "branch": BRANCH,
+        "sha": sha
+    }
+    
+    # 4. Wyślij do GitHub
+    res = requests.put(url, headers=headers, json=payload)
+    if res.status_code in [200, 201]:
+        st.cache_data.clear() # Czyścimy cache, by przeładować dane
+        st.success("Zapisano w chmurze GitHub!")
+        st.rerun()
+    else:
+        st.error(f"Błąd zapisu: {res.text}")
 
+# --- UI APLIKACJI ---
 st.title("Perkladačь slověnьskogo ęzyka")
 user_input = st.text_area("Vupiši slovo alibo rěčenьje:", placeholder="Np. W miastach siła.", height=150)
 
 if user_input:
-    with st.spinner("Przetwarzanie..."):
-        result = translate(user_input)
-        st.markdown("### Vynik perklada:")
-        st.success(result)
+    result = translate(user_input)
+    st.markdown("### Vynik perklada:")
+    st.success(result)
 
+st.divider()
 st.subheader("🧠 Naucz tłumacza")
 col1, col2 = st.columns(2)
 new_pl = col1.text_input("Słowo polskie")
 new_sl = col2.text_input("Tłumaczenie słowiańskie")
+
 if st.button("Zapisz do selflearning.json"):
     if new_pl and new_sl:
-        save_pair(new_pl, new_sl)
+        with st.spinner("Wysyłanie do GitHub..."):
+            save_pair_to_github(new_pl, new_sl)
+    else:
+        st.warning("Wypełnij oba pola!")
