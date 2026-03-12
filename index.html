@@ -86,26 +86,30 @@ async function loadData() {
 }
 
 function translateWord(word, dir) {
-    let low = word.toLowerCase();
+    // 1. Oczyszczenie słowa z białych znaków i normalizacja
+    let low = word.trim().toLowerCase();
     
-    // 1. Sprawdź memory.json
-    if (memory[low]) return memory[low];
+    // 2. Najpierw sprawdź memory.json (najwyższy priorytet)
+    if (memory && memory[low]) return memory[low];
 
-    // 2. Szukaj w osnova.json
-    for (let item of osnova) {
-        let src = dir === 'pl_sl' ? item.polish : item.slovian;
-        let trg = dir === 'pl_sl' ? item.slovian : item.polish;
+    // 3. Szukaj w osnova.json używając metody find (szybsza i dokładniejsza)
+    const entry = osnova.find(item => {
+        let val = dir === 'pl_sl' ? item.polish : item.slovian;
+        return val && val.trim().toLowerCase() === low;
+    });
 
-        if (src && src.toLowerCase() === low) {
-            let res = trg;
-            // Dodaj końcówkę z vuzor.json jeśli kierunek to PL -> SL
-            if (dir === 'pl_sl' && item.vuzor && vuzor[item.vuzor]) {
-                res += (vuzor[item.vuzor].nom || "");
-            }
-            return res;
+    if (entry) {
+        let res = dir === 'pl_sl' ? entry.slovian : entry.polish;
+        
+        // 4. Obsługa wzorców odmiany (vuzor)
+        if (dir === 'pl_sl' && entry.vuzor && vuzor[entry.vuzor]) {
+            let suffix = vuzor[entry.vuzor].nom || "";
+            res += suffix;
         }
+        return res;
     }
-    return word; // Jeśli nie znaleziono, zwróć oryginał
+
+    return word; // Zwróć oryginał, jeśli nic nie pasuje
 }
 
 document.getElementById('runTranslate').onclick = () => {
