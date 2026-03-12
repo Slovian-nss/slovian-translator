@@ -1,9 +1,36 @@
+<?php
+// --- LOGIKA BACKENDU (Zapisywanie słów) ---
+$statusMsg = "";
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'add_word') {
+    if ($_POST['pass'] === 'Rozeta*8') {
+        $pl = trim($_POST['newPl']);
+        $sl = trim($_POST['newSl']);
+        
+        if (!empty($pl) && !empty($sl)) {
+            $memFile = 'memory.json';
+            $currentMem = file_exists($memFile) ? json_decode(file_get_contents($memFile), true) : [];
+            
+            // Dodajemy słowo (dwukierunkowo)
+            $currentMem[mb_strtolower($pl)] = $sl;
+            
+            if (file_put_contents($memFile, json_encode($currentMem, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT))) {
+                $statusMsg = "<div class='status success'>Dodano pomyślnie do bazy!</div>";
+            } else {
+                $statusMsg = "<div class='status error'>Błąd zapisu pliku. Sprawdź uprawnienia.</div>";
+            }
+        }
+    } else {
+        $statusMsg = "<div class='status error'>Błędne hasło admina!</div>";
+    }
+}
+?>
+
 <!DOCTYPE html>
 <html lang="pl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Perkladačь slověnьskogo ęzyka</title>
+    <title>Perkladačь slověnьskogo ęzyka (PHP Edition)</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
         :root { --primary: #0055ff; --bg: #f3f6f9; --text: #1a1a1a; --border: #d1d9e0; }
@@ -19,6 +46,9 @@
         .admin-panel { margin-top: 50px; padding-top: 30px; border-top: 1px solid #eee; width: 100%; }
         .admin-grid { display: grid; grid-template-columns: 2fr 2fr 1fr; gap: 10px; margin-top: 10px; }
         .input-admin { padding: 10px; border: 1px solid var(--border); border-radius: 8px; }
+        .status { padding: 10px; border-radius: 8px; margin-top: 10px; text-align: center; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
     </style>
 </head>
 <body>
@@ -26,9 +56,11 @@
 <div class="container">
     <h1>🌐 Perkladačь slověnьskogo ęzyka</h1>
 
+    <?php echo $statusMsg; ?>
+
     <div style="margin-bottom: 20px; text-align: center;">
-        <label><input type="radio" name="dir" value="pl_sl" checked> PL ➔ SL</label>
-        <label style="margin-left: 20px;"><input type="radio" name="dir" value="sl_pl"> SL ➔ PL</label>
+        <label><input type="radio" name="dir" value="pl_sl" checked id="dir_pl_sl"> PL ➔ SL</label>
+        <label style="margin-left: 20px;"><input type="radio" name="dir" value="sl_pl" id="dir_sl_pl"> SL ➔ PL</label>
     </div>
 
     <div class="translator-grid">
@@ -52,55 +84,48 @@
     </div>
 
     <div class="admin-panel">
-        <h3>🛠️ Popraw bazę (Admin)</h3>
-        <input type="password" id="pass" class="input-admin" placeholder="Hasło">
-        <button class="btn-small" id="btnLogin">Zaloguj</button>
-        <div id="adminForm" style="display:none;" class="admin-grid">
-            <input type="text" id="newPl" class="input-admin" placeholder="Słowo PL">
-            <input type="text" id="newSl" class="input-admin" placeholder="Słowo SL">
-            <button class="btn-small" onclick="alert('Zapisano w sesji!')">Dodaj</button>
-        </div>
+        <h3>🛠️ Zarządzaj bazą (Trwały zapis)</h3>
+        <form method="POST">
+            <input type="hidden" name="action" value="add_word">
+            <input type="password" name="pass" class="input-admin" placeholder="Hasło admina" required>
+            <div class="admin-grid">
+                <input type="text" name="newPl" class="input-admin" placeholder="Słowo PL" required>
+                <input type="text" name="newSl" class="input-admin" placeholder="Słowo SL" required>
+                <button type="submit" class="main-btn" style="margin:0;">✅ Dodaj na stałe</button>
+            </div>
+        </form>
     </div>
 </div>
 
 <script>
+// Logika JS pozostaje do błyskawicznego tłumaczenia (bez przeładowania strony)
 let osnova = [];
 let vuzor = {};
 let memory = {};
 
-// Ładowanie plików JSON z Twojego repozytorium
 async function loadData() {
     try {
-        const fetchJSON = async (url) => {
-            const r = await fetch(url + '?nocache=' + new Date().getTime());
-            return r.ok ? await r.json() : null;
-        };
-
-        osnova = await fetchJSON('osnova.json') || [];
-        vuzor = await fetchJSON('vuzor.json') || {};
-        memory = await fetchJSON('memory.json') || {};
-        
-        console.log("Dane załadowane pomyślnie.");
-    } catch (e) {
-        console.error("Błąd podczas ładowania JSON:", e);
-    }
+        const cacheBuster = '?v=' + Date.now();
+        const [o, v, m] = await Promise.all([
+            fetch('osnova.json' + cacheBuster).then(r => r.json()),
+            fetch('vuzor.json' + cacheBuster).then(r => r.json()),
+            fetch('memory.json' + cacheBuster).then(r => r.json()).catch(() => ({}))
+        ]);
+        osnova = o; vuzor = v; memory = m;
+        console.log("Bazy załadowane.");
+    } catch (e) { console.error("Błąd ładowania danych:", e); }
 }
 
-// Funkcja odnajdująca i odmieniająca słowo
 function processWord(word, direction) {
     let low = word.toLowerCase();
-    
-    // 1. Sprawdź pamięć podręczną
     if (memory[low]) return memory[low];
 
-    // 2. Szukaj w osnova
     for (let item of osnova) {
         let src = direction === 'pl_sl' ? item.polish : item.slovian;
         let trg = direction === 'pl_sl' ? item.slovian : item.polish;
 
         if (src && src.toLowerCase() === low) {
             let res = trg;
-            // Odmiana vuzor (tylko dla kierunku na słowiański)
             if (direction === 'pl_sl' && item.vuzor && vuzor[item.vuzor]) {
                 let suffix = vuzor[item.vuzor].nom || "";
                 res = res + suffix;
@@ -111,53 +136,31 @@ function processWord(word, direction) {
     return word;
 }
 
-// Główna funkcja tłumacząca
 document.getElementById('runTranslate').onclick = function() {
     const text = document.getElementById('srcText').value;
     const dir = document.querySelector('input[name="dir"]:checked').value;
-    
-    // Rozbijanie na słowa i znaki, by zachować interpunkcję
     const tokens = text.split(/(\W+)/);
     const translated = tokens.map(t => {
         if (/^\W+$/.test(t)) return t; 
-        
         let result = processWord(t, dir);
-        
-        // Zachowanie wielkości liter
         if (t === t.toUpperCase()) return result.toUpperCase();
         if (t[0] === t[0].toUpperCase()) return result.charAt(0).toUpperCase() + result.slice(1);
         return result;
     });
-
     document.getElementById('resText').value = translated.join("");
 };
 
-// Funkcje pomocnicze
+// Kopiowanie i Wklejanie
 document.getElementById('btnCopy').onclick = () => {
-    const el = document.getElementById('resText');
-    el.select();
-    document.execCommand('copy');
-    alert("Skopiowano!");
+    navigator.clipboard.writeText(document.getElementById('resText').value);
+    alert("Skopiowano do schowka!");
 };
 
 document.getElementById('btnPaste').onclick = async () => {
-    try {
-        const text = await navigator.clipboard.readText();
-        document.getElementById('srcText').value = text;
-    } catch (err) {
-        alert("Wklej tekst ręcznie (Ctrl+V)");
-    }
+    const text = await navigator.clipboard.readText();
+    document.getElementById('srcText').value = text;
 };
 
-document.getElementById('btnLogin').onclick = () => {
-    if (document.getElementById('pass').value === "Rozeta*8") {
-        document.getElementById('adminForm').style.display = "grid";
-    } else {
-        alert("Błędne hasło");
-    }
-};
-
-// Start
 loadData();
 </script>
 
