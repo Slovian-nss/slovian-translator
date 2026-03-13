@@ -70,12 +70,14 @@ font-weight:bold;
 </style>
 """, unsafe_allow_html=True)
 
-
 # --- SILNIK TŁUMACZENIA ---
 def translate_engine(text, src, tgt):
+
     if not text.strip():
         return ""
-    return text   # tutaj wstawisz swój silnik
+
+    # tutaj wstawisz swoją logikę tłumaczenia
+    return text
 
 
 # --- SESSION STATE ---
@@ -91,7 +93,7 @@ if "tgt_lang" not in st.session_state:
 
 def swap_languages():
     st.session_state.src_lang, st.session_state.tgt_lang = \
-        st.session_state.tgt_lang, st.session_state.src_lang
+    st.session_state.tgt_lang, st.session_state.src_lang
 
 
 # --- TYTUŁ ---
@@ -100,7 +102,7 @@ st.markdown(
 unsafe_allow_html=True
 )
 
-# --- WYBÓR JĘZYKA ---
+# --- WYBÓR JĘZYKÓW ---
 col_l, col_s, col_r = st.columns([10,1.2,10])
 
 with col_l:
@@ -126,7 +128,6 @@ with col_r:
         label_visibility="collapsed"
     )
 
-
 st.write("")
 
 # --- PRZYCISKI KOPIOWANIA ---
@@ -138,22 +139,22 @@ with cp_l:
 with cp_r:
     st.button("📋 Kopiuj wynik")
 
-
 # --- POLA TEKSTOWE ---
 t_l, t_mid, t_r = st.columns([10,1.2,10])
 
 with t_l:
+
     input_txt = st.text_area(
         "",
         value=st.session_state.input_text,
         height=350,
-        placeholder="Wpisz tekst..."
+        placeholder="Wpisz tekst do przetłumaczenia..."
     )
 
     st.session_state.input_text = input_txt
 
-
 with t_r:
+
     wynik = translate_engine(
         st.session_state.input_text,
         st.session_state.src_lang,
@@ -165,7 +166,6 @@ with t_r:
         value=wynik,
         height=350
     )
-
 
 st.markdown("---")
 st.caption("Interfejs zoptymalizowany pod kątem estetyki DeepL.")
