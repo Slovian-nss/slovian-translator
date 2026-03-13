@@ -25,14 +25,6 @@ LANGUAGES = {
 
 st.set_page_config(page_title="DeepL Slověnьsk", layout="wide")
 
-# --- ZARZĄDZANIE STANEM (Session State) ---
-if 'src_lang' not in st.session_state:
-    st.session_state.src_lang = "pl"
-if 'tgt_lang' not in st.session_state:
-    st.session_state.tgt_lang = "sl"
-if 'input_text' not in st.session_state:
-    st.session_state.input_text = ""
-
 # --- STYLIZACJA UI ---
 st.markdown("""
 <style>
@@ -46,13 +38,12 @@ st.markdown("""
         color: #1a1a1b !important;
     }
 
-    /* Kontener dla przycisku zamiany */
-    .swap-btn-container {
+    /* Wycentrowanie przycisku SWAP w osi list wyboru */
+    .swap-container {
         display: flex;
-        justify-content: center;
         align-items: center;
-        height: 100%;
-        margin-top: 2px;
+        justify-content: center;
+        padding-top: 1px; /* Precyzyjne dopasowanie do linii pól */
     }
     
     .stButton button {
@@ -60,39 +51,35 @@ st.markdown("""
         color: white; 
         border-radius: 8px; 
         border: none; 
-        width: 50px;
-        height: 40px;
+        width: 100%;
+        height: 42px;
         font-weight: bold;
     }
     .stButton button:hover { background-color: #004a7c; color: white; border: none; }
     
     h1 { color: #002b49; font-weight: 800; text-align: center; margin-bottom: 20px; }
-    .stCaption { text-align: center; margin-top: 20px; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- LOGIKA DANYCH I TŁUMACZENIA ---
-def get_github_file():
-    url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/contents/{FILE_PATH}"
-    headers = {"Authorization": f"token {GITHUB_TOKEN}"}
-    try:
-        response = requests.get(url, headers=headers)
-        if response.status_code == 200:
-            data = response.json()
-            content = base64.b64decode(data['content']).decode('utf-8')
-            return json.loads(content), data['sha']
-    except:
-        pass
-    return [], None
-
-@st.cache_data
+# --- LOGIKA POBIERANIA DANYCH ---
+@st.cache_data(ttl=60)
 def load_all_data():
     osnova = []
     if os.path.exists("osnova.json"):
         with open("osnova.json", "r", encoding="utf-8") as f:
             osnova = json.load(f)
-    sl, _ = get_github_file()
-    return osnova + sl
+    
+    # Próba pobrania z GitHub
+    url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/contents/{FILE_PATH}"
+    headers = {"Authorization": f"token {GITHUB_TOKEN}"}
+    try:
+        res = requests.get(url, timeout=5)
+        if res.status_code == 200:
+            content = base64.b64decode(res.json()['content']).decode('utf-8')
+            osnova += json.loads(content)
+    except:
+        pass
+    return osnova
 
 all_data = load_all_data()
 
@@ -101,15 +88,16 @@ def build_dictionaries(data):
     pl_sl = defaultdict(list); sl_pl = defaultdict(list)
     for e in data:
         pl, sl = e.get("polish","").lower().strip(), e.get("slovian","").lower().strip()
-        if pl: pl_sl[pl].append(e.get("slovian",""))
-        if sl: sl_pl[sl].append(e.get("polish",""))
+        if pl and sl:
+            pl_sl[pl].append(sl)
+            sl_pl[sl].append(pl)
     return pl_sl, sl_pl
 
 pl_to_sl, sl_to_pl = build_dictionaries(all_data)
 
+# --- SILNIK TŁUMACZENIA ---
 def external_api_translate(text, src, tgt):
     if src == tgt: return text
-    # MyMemory API - darmowe i bez klucza dla małego ruchu
     url = f"https://api.mymemory.translated.net/get?q={text}&langpair={src}|{tgt}"
     try:
         r = requests.get(url, timeout=5).json()
@@ -119,84 +107,77 @@ def external_api_translate(text, src, tgt):
 
 def local_slovian_logic(text, to_sl=True):
     dic = pl_to_sl if to_sl else sl_to_pl
-    def repl(m):
-        w = m.group(0); lw = w.lower()
-        if lw in dic and dic[lw]:
-            t = dic[lw][0]
-            if w.isupper(): return t.upper()
-            if w[0].isupper(): return t.capitalize()
-            return t
-        return f"[{w}]" if to_sl else w
-    return re.sub(r'\w+', repl, text)
+    if not dic: return text
+    
+    # Dzielenie na słowa i znaki interpunkcyjne
+    tokens = re.findall(r'\w+|[^\w\s]', text, re.UNICODE)
+    result = []
+    
+    for token in tokens:
+        l_token = token.lower()
+        if l_token in dic:
+            translated = dic[l_token][0]
+            if token.isupper(): translated = translated.upper()
+            elif token[0].isupper(): translated = translated.capitalize()
+            result.append(translated)
+        else:
+            result.append(f"[{token}]" if to_sl and token.isalnum() else token)
+    
+    return "".join([" " + t if t.isalnum() and i > 0 and result[i-1].isalnum() else t for i, t in enumerate(result)])
 
-def translate_engine(text, src, tgt):
+def master_translate(text, src, tgt):
     if not text.strip(): return ""
-    # Jeśli celem jest prasłowiański
     if tgt == "sl":
-        pivot_pl = external_api_translate(text, src, "pl") if src != "pl" else text
-        return local_slovian_logic(pivot_pl, to_sl=True)
-    # Jeśli źródłem jest prasłowiański
+        pivot = external_api_translate(text, src, "pl") if src != "pl" else text
+        return local_slovian_logic(pivot, to_sl=True)
     elif src == "sl":
-        pivot_pl = local_slovian_logic(text, to_sl=False)
-        return external_api_translate(pivot_pl, "pl", tgt) if tgt != "pl" else pivot_pl
-    # Inne języki (bezpośrednio przez API)
+        pivot = local_slovian_logic(text, to_sl=False)
+        return external_api_translate(pivot, "pl", tgt) if tgt != "pl" else pivot
     else:
         return external_api_translate(text, src, tgt)
 
-# --- FUNKCJA ZAMIANY (SWAP) ---
-def swap_languages():
-    # Pobieramy obecny wynik, by stał się nowym wejściem
-    current_input = st.session_state.input_text
-    current_output = translate_engine(current_input, st.session_state.src_lang, st.session_state.tgt_lang)
-    
-    # Zamiana
+# --- SESSION STATE ---
+if 'src_lang' not in st.session_state: st.session_state.src_lang = "pl"
+if 'tgt_lang' not in st.session_state: st.session_state.tgt_lang = "sl"
+if 'input_text' not in st.session_state: st.session_state.input_text = ""
+
+def swap_action():
+    # Pobierz aktualne tłumaczenie przed zamianą
+    current_out = master_translate(st.session_state.input_text, st.session_state.src_lang, st.session_state.tgt_lang)
+    # Zamień języki
     old_src = st.session_state.src_lang
     st.session_state.src_lang = st.session_state.tgt_lang
     st.session_state.tgt_lang = old_src
-    st.session_state.input_text = current_output
+    # Tekst wynikowy staje się nowym wejściem
+    st.session_state.input_text = current_out
 
-# --- INTERFEJS UŻYTKOWNIKA ---
+# --- UI ---
 st.title("DeepL Slověnьsk")
 
-# Wiersz 1: Wybór Języka i Przycisk Swap
-col_l1, col_sw, col_l2 = st.columns([10, 1, 10])
+# Wiersz wyboru języków
+c1, c_sw, c2 = st.columns([10, 1, 10])
 
-with col_l1:
-    src_lang = st.selectbox("Z", options=list(LANGUAGES.keys()), 
-                            format_func=lambda x: LANGUAGES[x], 
-                            key="src_lang", label_visibility="collapsed")
+with c1:
+    st.selectbox("Źródło", options=list(LANGUAGES.keys()), format_func=lambda x: LANGUAGES[x], key="src_lang", label_visibility="collapsed")
 
-with col_sw:
-    st.markdown('<div class="swap-btn-container">', unsafe_allow_html=True)
-    if st.button("⇄", on_click=swap_languages):
-        pass # Logika jest w on_click
+with c_sw:
+    st.markdown('<div class="swap-container">', unsafe_allow_html=True)
+    st.button("⇄", on_click=swap_action)
     st.markdown('</div>', unsafe_allow_html=True)
 
-with col_l2:
-    tgt_lang = st.selectbox("Na", options=list(LANGUAGES.keys()), 
-                            format_func=lambda x: LANGUAGES[x], 
-                            key="tgt_lang", label_visibility="collapsed")
+with c2:
+    st.selectbox("Cel", options=list(LANGUAGES.keys()), format_func=lambda x: LANGUAGES[x], key="tgt_lang", label_visibility="collapsed")
 
-# Wiersz 2: Pola Tekstowe
-col_t1, col_sp, col_t2 = st.columns([10, 1, 10])
+# Wiersz pól tekstowych
+t1, t_space, t2 = st.columns([10, 1, 10])
 
-with col_t1:
-    input_text = st.text_area("Tekst", value=st.session_state.input_text, 
-                              placeholder="Wpisz tekst...", height=350, 
-                              key="input_area", label_visibility="collapsed")
-    # Synchronizacja tekstu z session_state
-    st.session_state.input_text = input_text
+with t1:
+    # Używamy on_change do natychmiastowej aktualizacji
+    st.text_area("Input", key="input_text", height=350, label_visibility="collapsed", placeholder="Wpisz tekst tutaj...")
 
-with col_t2:
-    output_text = ""
-    if st.session_state.input_text:
-        with st.spinner('Tłumaczenie...'):
-            output_text = translate_engine(st.session_state.input_text, 
-                                          st.session_state.src_lang, 
-                                          st.session_state.tgt_lang)
-    
-    st.text_area("Wynik", value=output_text, height=350, 
-                 key="output_area", label_visibility="collapsed", disabled=False)
+with t2:
+    translated = master_translate(st.session_state.input_text, st.session_state.src_lang, st.session_state.tgt_lang)
+    st.text_area("Output", value=translated, height=350, label_visibility="collapsed", disabled=False)
 
 st.markdown("---")
-st.caption("Standardowa baza Prasłowiańska + API MyMemory (Pivot: Polski)")
+st.caption("Jeśli słowo nie istnieje w bazie prasłowiańskiej, pojawi się w nawiasie [słowo].")
