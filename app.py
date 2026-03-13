@@ -1,71 +1,12 @@
 import streamlit as st
+from style import apply_custom_style, render_header
+from logic import translate_text, get_languages
 
-# --- KONFIGURACJA ---
-LANGUAGES = {
-    "pl": "Polski", "sl": "Prasłowiański", "en": "Angielski",
-    "de": "Niemiecki", "fr": "Francuski", "es": "Hiszpański", "ru": "Rosyjski"
-}
-
+# --- INICJALIZACJA ---
 st.set_page_config(page_title="Tłumacz", layout="wide")
+apply_custom_style()
+LANGUAGES = get_languages()
 
-# --- CSS: PRECYZYJNE WYKOŃCZENIE ---
-st.markdown("""
-<style>
-    /* Podciągnięcie całości do góry */
-    .stApp { margin-top: -50px; }
-    
-    .title-text {
-        color:#002b49;
-        font-weight:800;
-        text-align:center;
-        font-size:2.2rem;
-        margin-bottom: 20px !important;
-    }
-
-    /* Wyrównanie pionowe rzędu wyboru języka */
-    [data-testid="stHorizontalBlock"] {
-        align-items: center !important;
-        gap: 0.5rem !important;
-    }
-
-    /* Stylizacja list rozwijanych */
-    div[data-baseweb="select"] {
-        border: 2px solid #2d3748 !important;
-        border-radius: 10px !important;
-    }
-
-    /* Stylizacja przycisków funkcyjnych (Wklej/Kopiuj) */
-    .stButton button {
-        background:#002b49 !important;
-        color:white !important;
-        border-radius:6px !important;
-        height: 32px !important;
-        font-size: 14px !important;
-        padding: 0px 15px !important;
-        width: auto !important; /* Przycisk dopasuje się do napisu */
-    }
-
-    /* Przycisk zamiany języków (⇄) */
-    .swap-btn-container button {
-        width: 50px !important;
-        height: 40px !important;
-        font-size: 20px !important;
-        margin-top: 0px !important;
-    }
-
-    /* Odstępy między rzędami */
-    .row-spacer { margin-top: 15px; }
-
-    /* Pola tekstowe */
-    .stTextArea textarea {
-        border:2px solid #2d3748 !important;
-        border-radius:10px !important;
-        padding: 15px !important;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-# --- LOGIKA SESJI ---
 if "input_text" not in st.session_state: st.session_state.input_text = ""
 if "src_lang" not in st.session_state: st.session_state.src_lang = "pl"
 if "tgt_lang" not in st.session_state: st.session_state.tgt_lang = "sl"
@@ -74,8 +15,8 @@ def swap_langs():
     st.session_state.src_lang, st.session_state.tgt_lang = \
         st.session_state.tgt_lang, st.session_state.src_lang
 
-# --- LAYOUT ---
-st.markdown('<h1 class="title-text">Tłumacz Języka Słowiańskiego (Prasłowiańskiego)</h1>', unsafe_allow_html=True)
+# --- RENDEROWANIE INTERFEJSU ---
+render_header()
 
 # RZĄD 1: Wybór języka
 c1, c2, c3 = st.columns([10, 1, 10])
@@ -101,10 +42,14 @@ with b2:
 t1, _, t2 = st.columns([10, 1, 10])
 with t1:
     st.session_state.input_text = st.text_area("in", value=st.session_state.input_text, height=250, label_visibility="collapsed", placeholder="Wpisz tekst...")
+
 with t2:
-    # Przykładowe "tłumaczenie" (tu wstaw swoją funkcję)
-    wynik = f"({st.session_state.tgt_lang.upper()}) {st.session_state.input_text}" if st.session_state.input_text else ""
+    wynik = translate_text(
+        st.session_state.input_text, 
+        st.session_state.src_lang, 
+        st.session_state.tgt_lang
+    )
     st.text_area("out", value=wynik, height=250, label_visibility="collapsed", key="output_area")
 
 st.markdown("---")
-st.caption("Interfejs zoptymalizowany pod kątem estetyki DeepL.")
+st.caption("Interfejs rozdzielony na moduły (logic/style).")
