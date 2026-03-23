@@ -3,7 +3,6 @@ import json
 import os
 import re
 from collections import defaultdict
-from groq import Groq
 
 st.set_page_config(page_title="Perkladačь slověnьskogo ęzyka", layout="centered")
 
@@ -14,74 +13,81 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ================== GROQ ==================
-
-client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-
-# ================== ŁADOWANIE ==================
+# ================== ŁADOWANIE DANYCH ==================
 
 @st.cache_data
 def load_json(filename):
     if not os.path.exists(filename):
         return []
-    with open(filename, "r", encoding="utf-8") as f:
-        return json.load(f)
+    try:
+        with open(filename, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except:
+        return []
 
 osnova = load_json("osnova.json")
-vuzor  = load_json("vuzor.json")
 
-# ================== INDEKS SŁOWNIKA ==================
+# ================== BUDOWA SŁOWNIKA LOKALNEGO ==================
 
 @st.cache_data
-def build_dictionary(data):
-    dic = defaultdict(list)
-
+def build_simple_dict(data):
+    # Tworzymy mapowanie: polskie_slowo -> slowianskie_slowo
+    dic = {}
     for entry in data:
-        key = entry.get("polish","").lower().strip()
-        if key:
-            dic[key].append(entry)
-
+        pol = entry.get("polish", "").lower().strip()
+        slo = entry.get("slovian", "").strip()
+        if pol and slo:
+            # Jeśli jest kilka znaczeń, bierzemy pierwsze napotkane
+            if pol not in dic:
+                dic[pol] = slo
     return dic
 
-dictionary = build_dictionary(osnova)
+dictionary = build_simple_dict(osnova)
 
-# ================== WYSZUKIWANIE ==================
+# ================== LOGIKA TŁUMACZENIA BEZ API ==================
 
-def get_context(text, dic):
+def local_translate(text, dic):
+    # Reguła podziału zachowująca interpunkcję i spacje
+    # Rozbijamy na słowa (\w+) i wszystko inne ([^\w\s] lub spacje)
+    tokens = re.findall(r'\w+|[^\w\s]|\s+', text)
+    
+    translated_parts = []
+    
+    for token in tokens:
+        # Sprawdzamy czy token to słowo
+        if re.match(r'\w+', token):
+            lower_token = token.lower()
+            
+            # 1. Szukamy dokładnego dopasowania
+            if lower_token in dic:
+                replacement = dic[lower_token]
+            # 2. Szukamy po prefiksie (minimum 4 litery)
+            else:
+                replacement = "(ne najdeno slova)"
+                if len(lower_token) >= 4:
+                    pref = lower_token[:4]
+                    for pol_word, slo_word in dic.items():
+                        if pol_word.startswith(pref):
+                            replacement = slo_word
+                            break
+            
+            # Zachowanie wielkości liter (prosta logika)
+            if token.istitle():
+                replacement = replacement.capitalize()
+            elif token.isupper():
+                replacement = replacement.upper()
+                
+            translated_parts.append(replacement)
+        else:
+            # Jeśli to spacja lub interpunkcja, dodaj bez zmian
+            translated_parts.append(token)
+            
+    return "".join(translated_parts)
 
-    words = re.findall(r'\w+', text.lower())
-    results = []
-    seen = set()
-
-    for w in words:
-
-        # dokładne dopasowanie
-        if w in dic:
-            for e in dic[w]:
-                key = (e["polish"], e["slovian"])
-                if key not in seen:
-                    results.append(e)
-                    seen.add(key)
-
-        # prefix search
-        elif len(w) >= 4:
-            pref = w[:4]
-
-            for base, entries in dic.items():
-                if base.startswith(pref):
-
-                    for e in entries:
-                        key = (e["polish"], e["slovian"])
-
-                        if key not in seen:
-                            results.append(e)
-                            seen.add(key)
-
-    return results
-
-# ================== INTERFEJS ==================
+# ================== INTERFEJS UŻYTKOWNIKA ==================
 
 st.title("Perkladačь slověnьskogo ęzyka")
+st.caption("Tryb lokalny (bez API) - tłumaczenie słownikowe")
 
 user_input = st.text_area(
     "Vupiši slovo alibo rěčenьje:",
@@ -90,49 +96,13 @@ user_input = st.text_area(
 )
 
 if user_input:
+    with st.spinner("Perkladajų..."):
+        # Wywołujemy lokalną funkcję zamiast Groq
+        result = local_translate(user_input, dictionary)
+        
+        st.markdown("### Vynik perklada:")
+        st.success(result)
 
-    with st.spinner("Przetwarzanie..."):
-
-        matches = get_context(user_input, dictionary)
-
-        mapping = "\n".join(
-            f"PL '{m['polish']}' → SL '{m['slovian']}'"
-            for m in matches
-        )
-
-        system_prompt = f"""
-Jesteś precyzyjnym tłumaczem na język prasłowiański.
-
-Używasz WYŁĄCZNIE słów z danych.
-
-DANE SŁOWNIKOWE:
-{mapping}
-
-WZORY:
-{json.dumps(vuzor[:20], ensure_ascii=False)}
-
-ZASADY BEZWZGLĘDNE:
-1. Jeśli nie ma odmiany słowiańskiego słowa (lub jego podstawowej odmiany), to wtedy napisz w jego miejscu (ne najdeno slova) i tłumacz dalej to co możesz.
-2. SZYK: Przymiotniki (oznaczone są one jako: adjective - pridavьnik) i przysłówki (oznaczone są one jako: adverb - prislovok) zawsze są przed rzeczownikami (oznaczone są one jako: noun - jimenьnik).
-3. FORMAT: Zachowaj interpunkcję, odwzorowanie, wielkość liter, spacje, odstępy, znaki matematyczne, linkowanie i brak dodatkowego komentarza."""
-
-        try:
-
-            chat = client.chat.completions.create(
-                model="openai/gpt-oss-120b",
-                messages=[
-                    {"role":"system","content":system_prompt},
-                    {"role":"user","content":user_input}
-                ],
-                temperature=0,
-                max_tokens=800
-            )
-
-            result = chat.choices[0].message.content.strip()
-
-            st.markdown("### Vynik perklada:")
-            st.success(result)
-
-        except Exception as e:
-            st.error(f"Blǫd perklada: {e}")
-
+# Stopka informacyjna
+st.divider()
+st.info("💡 Tłumacz działa teraz w trybie 1:1 na podstawie pliku osnova.json. Nie wymaga połączenia z internetem ani kluczy API.")
