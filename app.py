@@ -24,7 +24,7 @@
       background: var(--bg-dark);
       color: var(--text);
       font-family: system-ui, -apple-system, sans-serif;
-      min-height: 100vh;          /* ← poprawione */
+      min-height: 100px;
       padding: 1.5rem;
       line-height: 1.5;
     }
