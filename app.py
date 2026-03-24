@@ -1,6 +1,5 @@
 import streamlit as st
 import json
-import os
 import re
 from deep_translator import GoogleTranslator
 
@@ -10,10 +9,11 @@ st.markdown("""
 <style>
 .main {background:#0e1117}
 .stTextArea textarea {background:#1a1a1a;color:#dcdcdc}
+button {margin-top:5px}
 </style>
 """, unsafe_allow_html=True)
 
-# ================== ŁADOWANIE ==================
+# ================== LOAD ==================
 
 @st.cache_data
 def load_json(filename):
@@ -25,7 +25,7 @@ def load_json(filename):
 
 osnova = load_json("osnova.json")
 
-# ================== SŁOWNIKI ==================
+# ================== DICTS ==================
 
 @st.cache_data
 def build_dict(data):
@@ -44,7 +44,7 @@ def build_dict(data):
 
 pl_to_slo, slo_to_pl = build_dict(osnova)
 
-# ================== TŁUMACZENIE ==================
+# ================== LOCAL ==================
 
 def translate_pl_to_slo(text):
     tokens = re.findall(r'\w+|[^\w\s]|\s+', text)
@@ -87,40 +87,74 @@ def translate_slo_to_pl(text):
 
     return "".join(result)
 
+# ================== GOOGLE ==================
+
 def google_translate(text, source, target):
     try:
         return GoogleTranslator(source=source, target=target).translate(text)
-    except:
-        return "(błąd tłumaczenia)"
+    except Exception as e:
+        return f"(błąd: {e})"
 
 # ================== UI ==================
 
 st.title("Perkladačь slověnьskogo ęzyka")
 
-mode = st.selectbox(
-    "Tryb:",
-    [
-        "Dowolny → słowiański",
-        "Słowiański → dowolny"
-    ]
-)
+langs = {
+    "Auto": "auto",
+    "Polski": "pl",
+    "Angielski": "en",
+    "Niemiecki": "de",
+    "Francuski": "fr",
+    "Hiszpański": "es",
+    "Słowiański": "slo"
+}
+
+col1, col2 = st.columns(2)
+
+with col1:
+    source_lang = st.selectbox("Z języka:", list(langs.keys()))
+
+with col2:
+    target_lang = st.selectbox("Na język:", list(langs.keys()), index=6)
 
 user_input = st.text_area("Vupiši tekst:", height=150)
 
-target_lang = st.text_input("Kod języka docelowego:", value="en")
+colA, colB, colC = st.columns(3)
+
+translate_btn = colA.button("🔄 Tłumacz")
+paste_btn = colB.button("📋 Wklej (ctrl+v)")
+copy_btn = colC.button("📄 Kopiuj wynik")
 
 # ================== LOGIKA ==================
 
-if user_input:
-    with st.spinner("Perkladajų..."):
+result = ""
 
-        if mode == "Dowolny → słowiański":
-            pl = google_translate(user_input, "auto", "pl")
-            result = translate_pl_to_slo(pl)
+if translate_btn and user_input:
 
-        else:
-            pl = translate_slo_to_pl(user_input)
-            result = google_translate(pl, "pl", target_lang)
+    src = langs[source_lang]
+    tgt = langs[target_lang]
 
-        st.markdown("### Vynik perklada:")
-        st.success(result)
+    # ====== CASE 1: NA SŁOWIAŃSKI ======
+    if tgt == "slo":
+        # zawsze przez polski
+        pl = google_translate(user_input, src, "pl")
+        result = translate_pl_to_slo(pl)
+
+    # ====== CASE 2: ZE SŁOWIAŃSKIEGO ======
+    elif src == "slo":
+        pl = translate_slo_to_pl(user_input)
+        result = google_translate(pl, "pl", tgt)
+
+    # ====== CASE 3: NORMAL ======
+    else:
+        result = google_translate(user_input, src, tgt)
+
+# ================== OUTPUT ==================
+
+if result:
+    st.markdown("### Vynik perklada:")
+    st.success(result)
+
+    if copy_btn:
+        st.code(result)
+        st.toast("Skopiuj ręcznie (Ctrl+C)")
