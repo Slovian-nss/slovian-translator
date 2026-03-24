@@ -53,8 +53,24 @@ def translate_pl_to_slo(text):
     for token in tokens:
         if re.match(r'\w+', token):
             lower = token.lower()
-            translated = pl_to_slo.get(lower, token)
 
+            # 1. dokładne dopasowanie
+            if lower in pl_to_slo:
+                translated = pl_to_slo[lower]
+
+            # 2. prefiks (ratunek)
+            else:
+                translated = None
+                for k, v in pl_to_slo.items():
+                    if lower.startswith(k[:4]):
+                        translated = v
+                        break
+
+                # 3. brak słowa
+                if not translated:
+                    translated = f"[{token}]"
+
+            # wielkość liter
             if token.istitle():
                 translated = translated.capitalize()
             elif token.isupper():
@@ -119,11 +135,7 @@ with col2:
 
 user_input = st.text_area("Vupiši tekst:", height=150)
 
-colA, colB, colC = st.columns(3)
-
-translate_btn = colA.button("🔄 Tłumacz")
-paste_btn = colB.button("📋 Wklej (ctrl+v)")
-copy_btn = colC.button("📄 Kopiuj wynik")
+translate_btn = st.button("🔄 Tłumacz")
 
 # ================== LOGIKA ==================
 
@@ -134,18 +146,17 @@ if translate_btn and user_input:
     src = langs[source_lang]
     tgt = langs[target_lang]
 
-    # ====== CASE 1: NA SŁOWIAŃSKI ======
+    # ===== NA SŁOWIAŃSKI =====
     if tgt == "slo":
-        # zawsze przez polski
         pl = google_translate(user_input, src, "pl")
         result = translate_pl_to_slo(pl)
 
-    # ====== CASE 2: ZE SŁOWIAŃSKIEGO ======
+    # ===== ZE SŁOWIAŃSKIEGO =====
     elif src == "slo":
         pl = translate_slo_to_pl(user_input)
         result = google_translate(pl, "pl", tgt)
 
-    # ====== CASE 3: NORMAL ======
+    # ===== NORMAL =====
     else:
         result = google_translate(user_input, src, tgt)
 
@@ -154,7 +165,3 @@ if translate_btn and user_input:
 if result:
     st.markdown("### Vynik perklada:")
     st.success(result)
-
-    if copy_btn:
-        st.code(result)
-        st.toast("Skopiuj ręcznie (Ctrl+C)")
