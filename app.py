@@ -2,7 +2,7 @@ import streamlit as st
 import json
 import os
 import re
-from collections import defaultdict
+from deep_translator import GoogleTranslator
 
 st.set_page_config(page_title="Perkladačь slověnьskogo ęzyka", layout="centered")
 
@@ -13,7 +13,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ================== ŁADOWANIE DANYCH ==================
+# ================== ŁADOWANIE SŁOWNIKA ==================
 
 @st.cache_data
 def load_json(filename):
@@ -27,82 +27,123 @@ def load_json(filename):
 
 osnova = load_json("osnova.json")
 
-# ================== BUDOWA SŁOWNIKA LOKALNEGO ==================
+# ================== SŁOWNIK POLSKI → SŁOWIAŃSKI ==================
 
 @st.cache_data
-def build_simple_dict(data):
-    # Tworzymy mapowanie: polskie_slowo -> slowianskie_slowo
+def build_dict(data):
     dic = {}
+    reverse_dic = {}
+
     for entry in data:
         pol = entry.get("polish", "").lower().strip()
         slo = entry.get("slovian", "").strip()
+
         if pol and slo:
-            # Jeśli jest kilka znaczeń, bierzemy pierwsze napotkane
-            if pol not in dic:
-                dic[pol] = slo
-    return dic
+            dic[pol] = slo
+            reverse_dic[slo.lower()] = pol
 
-dictionary = build_simple_dict(osnova)
+    return dic, reverse_dic
 
-# ================== LOGIKA TŁUMACZENIA BEZ API ==================
+pl_to_slo, slo_to_pl = build_dict(osnova)
 
-def local_translate(text, dic):
-    # Reguła podziału zachowująca interpunkcję i spacje
-    # Rozbijamy na słowa (\w+) i wszystko inne ([^\w\s] lub spacje)
+# ================== PROSTE TŁUMACZENIE SŁOWNIKOWE ==================
+
+def translate_pl_to_slo(text):
     tokens = re.findall(r'\w+|[^\w\s]|\s+', text)
-    
-    translated_parts = []
-    
-    for token in tokens:
-        # Sprawdzamy czy token to słowo
-        if re.match(r'\w+', token):
-            lower_token = token.lower()
-            
-            # 1. Szukamy dokładnego dopasowania
-            if lower_token in dic:
-                replacement = dic[lower_token]
-            # 2. Szukamy po prefiksie (minimum 4 litery)
-            else:
-                replacement = "(ne najdeno slova)"
-                if len(lower_token) >= 4:
-                    pref = lower_token[:4]
-                    for pol_word, slo_word in dic.items():
-                        if pol_word.startswith(pref):
-                            replacement = slo_word
-                            break
-            
-            # Zachowanie wielkości liter (prosta logika)
-            if token.istitle():
-                replacement = replacement.capitalize()
-            elif token.isupper():
-                replacement = replacement.upper()
-                
-            translated_parts.append(replacement)
-        else:
-            # Jeśli to spacja lub interpunkcja, dodaj bez zmian
-            translated_parts.append(token)
-            
-    return "".join(translated_parts)
+    result = []
 
-# ================== INTERFEJS UŻYTKOWNIKA ==================
+    for token in tokens:
+        if re.match(r'\w+', token):
+            lower = token.lower()
+            translated = pl_to_slo.get(lower, token)
+
+            if token.istitle():
+                translated = translated.capitalize()
+            elif token.isupper():
+                translated = translated.upper()
+
+            result.append(translated)
+        else:
+            result.append(token)
+
+    return "".join(result)
+
+
+def translate_slo_to_pl(text):
+    tokens = re.findall(r'\w+|[^\w\s]|\s+', text)
+    result = []
+
+    for token in tokens:
+        if re.match(r'\w+', token):
+            lower = token.lower()
+            translated = slo_to_pl.get(lower, token)
+
+            if token.istitle():
+                translated = translated.capitalize()
+            elif token.isupper():
+                translated = translated.upper()
+
+            result.append(translated)
+        else:
+            result.append(token)
+
+    return "".join(result)
+
+# ================== GOOGLE TRANSLATE ==================
+
+def google_translate(text, source, target):
+    try:
+        return GoogleTranslator(source=source, target=target).translate(text)
+    except:
+        return "(błąd tłumaczenia API)"
+
+# ================== INTERFEJS ==================
 
 st.title("Perkladačь slověnьskogo ęzyka")
-st.caption("Tryb lokalny (bez API) - tłumaczenie słownikowe")
+
+mode = st.selectbox(
+    "Tryb:",
+    [
+        "Dowolny → słowiański",
+        "Słowiański → dowolny"
+    ]
+)
 
 user_input = st.text_area(
-    "Vupiši slovo alibo rěčenьje:",
-    placeholder="Np. W miastach siła.",
+    "Vupiši tekst:",
     height=150
 )
 
+target_lang = st.text_input("Kod języka docelowego (np. en, de, fr):", value="en")
+
 if user_input:
     with st.spinner("Perkladajų..."):
-        # Wywołujemy lokalną funkcję zamiast Groq
-        result = local_translate(user_input, dictionary)
-        
-        st.markdown("### Vynik perklada:")
-        st.success(result)
 
-# Stopka informacyjna
+        if mode == "Dowolny → słowiański":
+            # 1. dowolny → polski
+            pl = google_translate(user_input, "auto", "pl")
+
+            # 2. polski → słowiański
+            slo = translate_pl_to_slo(pl)
+
+            st.markdown("### Polski (pośredni):")
+            st.info(pl)
+
+            st.markdown("### Słowiański:")
+            st.success(slo)
+
+        elif mode == "Słowiański → dowolny":
+            # 1. słowiański → polski
+            pl = translate_slo_to_pl(user_input)
+
+            # 2. polski → docelowy
+            out = google_translate(pl, "pl", target_lang)
+
+            st.markdown("### Polski (pośredni):")
+            st.info(pl)
+
+            st.markdown("### Wynik końcowy:")
+            st.success(out)
+
 st.divider()
-st.info("💡 Tłumacz działa teraz w trybie 1:1 na podstawie pliku osnova.json. Nie wymaga połączenia z internetem ani kluczy API.")
+st.info("💡 Pipeline: Google → polski → prasłowiański (lub odwrotnie)")
