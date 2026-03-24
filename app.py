@@ -13,12 +13,10 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ================== ŁADOWANIE SŁOWNIKA ==================
+# ================== ŁADOWANIE ==================
 
 @st.cache_data
 def load_json(filename):
-    if not os.path.exists(filename):
-        return []
     try:
         with open(filename, "r", encoding="utf-8") as f:
             return json.load(f)
@@ -27,26 +25,26 @@ def load_json(filename):
 
 osnova = load_json("osnova.json")
 
-# ================== SŁOWNIK POLSKI → SŁOWIAŃSKI ==================
+# ================== SŁOWNIKI ==================
 
 @st.cache_data
 def build_dict(data):
-    dic = {}
-    reverse_dic = {}
+    pl_to_slo = {}
+    slo_to_pl = {}
 
     for entry in data:
         pol = entry.get("polish", "").lower().strip()
         slo = entry.get("slovian", "").strip()
 
         if pol and slo:
-            dic[pol] = slo
-            reverse_dic[slo.lower()] = pol
+            pl_to_slo[pol] = slo
+            slo_to_pl[slo.lower()] = pol
 
-    return dic, reverse_dic
+    return pl_to_slo, slo_to_pl
 
 pl_to_slo, slo_to_pl = build_dict(osnova)
 
-# ================== PROSTE TŁUMACZENIE SŁOWNIKOWE ==================
+# ================== TŁUMACZENIE ==================
 
 def translate_pl_to_slo(text):
     tokens = re.findall(r'\w+|[^\w\s]|\s+', text)
@@ -89,15 +87,13 @@ def translate_slo_to_pl(text):
 
     return "".join(result)
 
-# ================== GOOGLE TRANSLATE ==================
-
 def google_translate(text, source, target):
     try:
         return GoogleTranslator(source=source, target=target).translate(text)
     except:
-        return "(błąd tłumaczenia API)"
+        return "(błąd tłumaczenia)"
 
-# ================== INTERFEJS ==================
+# ================== UI ==================
 
 st.title("Perkladačь slověnьskogo ęzyka")
 
@@ -109,41 +105,22 @@ mode = st.selectbox(
     ]
 )
 
-user_input = st.text_area(
-    "Vupiši tekst:",
-    height=150
-)
+user_input = st.text_area("Vupiši tekst:", height=150)
 
-target_lang = st.text_input("Kod języka docelowego (np. en, de, fr):", value="en")
+target_lang = st.text_input("Kod języka docelowego:", value="en")
+
+# ================== LOGIKA ==================
 
 if user_input:
     with st.spinner("Perkladajų..."):
 
         if mode == "Dowolny → słowiański":
-            # 1. dowolny → polski
             pl = google_translate(user_input, "auto", "pl")
+            result = translate_pl_to_slo(pl)
 
-            # 2. polski → słowiański
-            slo = translate_pl_to_slo(pl)
-
-            st.markdown("### Polski (pośredni):")
-            st.info(pl)
-
-            st.markdown("### Słowiański:")
-            st.success(slo)
-
-        elif mode == "Słowiański → dowolny":
-            # 1. słowiański → polski
+        else:
             pl = translate_slo_to_pl(user_input)
+            result = google_translate(pl, "pl", target_lang)
 
-            # 2. polski → docelowy
-            out = google_translate(pl, "pl", target_lang)
-
-            st.markdown("### Polski (pośredni):")
-            st.info(pl)
-
-            st.markdown("### Wynik końcowy:")
-            st.success(out)
-
-st.divider()
-st.info("💡 Pipeline: Google → polski → prasłowiański (lub odwrotnie)")
+        st.markdown("### Vynik perklada:")
+        st.success(result)
