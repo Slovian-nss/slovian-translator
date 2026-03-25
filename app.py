@@ -33,7 +33,7 @@ else:
     lang_code = "pl"
 ui = UI_TRANSLATIONS[lang_code]
 
-# ================== 3. PERSISTENCJA W LOCAL STORAGE ==================
+# ================== 3. PERSISTENCJA ==================
 def get_persisted_target():
     code = st_javascript("""
         let val = localStorage.getItem('slovo_target_lang');
@@ -44,19 +44,17 @@ def get_persisted_target():
 def save_target(lang_code):
     st_javascript(f"localStorage.setItem('slovo_target_lang', '{lang_code}');")
 
-# ================== 4. KONFIGURACJA STRONY ==================
+# ================== 4. KONFIGURACJA ==================
 st.set_page_config(page_title=ui["title"], layout="wide")
 st.markdown("""
     <style>
     .main { max-width: 900px; margin: 0 auto; }
     .stTextArea textarea { font-size: 1.1rem; }
-    @media (max-width: 600px) {
-        .stButton button { width: 100%; }
-    }
+    div[data-testid="column"] > div { gap: 0.5rem; }
     </style>
     """, unsafe_allow_html=True)
 
-# ================== 5. LOGIKA SŁOWIAŃSKA ==================
+# ================== 5. LOGIKA SŁOWIAŃSKA (bez zmian) ==================
 @st.cache_data
 def load_json_safe(filename):
     try:
@@ -103,13 +101,13 @@ def google_translate(text, src, tgt):
         return f"(Error: {e})"
 
 # ================== 6. INTERFEJS ==================
-st.write(f"### 🌐 Slovo")
+st.write("### 🌐 Slovo")
 st.title(ui["title"])
 
 col1, col2 = st.columns(2)
 
 with col1:
-    src_label = st.selectbox(ui["from"], list(ALL_OPTIONS.keys()), index=0)
+    st.selectbox(ui["from"], list(ALL_OPTIONS.keys()), index=0, key="src")
 
 with col2:
     persisted = get_persisted_target()
@@ -117,7 +115,7 @@ with col2:
         default_idx = list(ALL_OPTIONS.values()).index(persisted)
     except ValueError:
         default_idx = list(ALL_OPTIONS.values()).index("slo")
-    tgt_label = st.selectbox(ui["to"], list(ALL_OPTIONS.keys()), index=default_idx, key="target_lang")
+    st.selectbox(ui["to"], list(ALL_OPTIONS.keys()), index=default_idx, key="target_lang")
 
 if "target_lang" in st.session_state:
     save_target(ALL_OPTIONS[st.session_state.target_lang])
@@ -126,8 +124,8 @@ user_input = st.text_area(ui["input"], height=150, placeholder="...")
 
 if st.button(ui["btn"], type="primary"):
     if user_input.strip():
-        src_code = ALL_OPTIONS[src_label]
-        tgt_code = ALL_OPTIONS[tgt_label]
+        src_code = ALL_OPTIONS[st.session_state.src]
+        tgt_code = ALL_OPTIONS[st.session_state.target_lang]
         with st.spinner('...'):
             if tgt_code == "slo":
                 pl_text = google_translate(user_input, src_code, "pl") if src_code != "pl" else user_input
