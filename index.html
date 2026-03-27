@@ -64,7 +64,7 @@
     </div>
     <div id="resultOutput" class="result-display"></div>
     <div class="status-bar">
-        <div id="dbStatus">Ładowanie...</div>
+        <div id="dbStatus">Ładowanie słowników...</div>
         <div>Slovo Engine v4.0</div>
     </div>
 </div>
@@ -72,13 +72,13 @@
     let plToSlo = {}, sloToPl = {};
 
     const languageData = [
-        { code: 'en', pl: 'Angielski', en: 'English', slo: 'Angolsky' },
-        { code: 'pl', pl: 'Polski', en: 'Polish', slo: 'Polsky' },
-        { code: 'slo', pl: 'Słowiański', en: 'Slovian', slo: 'Slovensky' },
-        { code: 'de', pl: 'Niemiecki', en: 'German', slo: 'Nemsky' },
-        { code: 'fr', pl: 'Francuski', en: 'French', slo: 'Fransky' },
-        { code: 'ru', pl: 'Rosyjski', en: 'Russian', slo: 'Russky' },
-        { code: 'es', pl: 'Hiszpański', en: 'Spanish', slo: 'Spansky' }
+        { code: 'en', pl: 'Angielski' },
+        { code: 'pl', pl: 'Polski' },
+        { code: 'slo', pl: 'Słowiański' },
+        { code: 'de', pl: 'Niemiecki' },
+        { code: 'fr', pl: 'Francuski' },
+        { code: 'ru', pl: 'Rosyjski' },
+        { code: 'es', pl: 'Hiszpański' }
     ];
 
     function populateDropdowns() {
@@ -87,15 +87,14 @@
         ulSrc.innerHTML = ''; 
         ulTgt.innerHTML = '';
         languageData.forEach(l => {
-            const name = l.pl;
             const liSrc = document.createElement('li'); 
-            liSrc.textContent = name;
-            liSrc.onclick = () => selectLanguage('src', l.code, name);
+            liSrc.textContent = l.pl;
+            liSrc.onclick = () => selectLanguage('src', l.code, l.pl);
             ulSrc.appendChild(liSrc);
 
             const liTgt = document.createElement('li'); 
-            liTgt.textContent = name;
-            liTgt.onclick = () => selectLanguage('tgt', l.code, name);
+            liTgt.textContent = l.pl;
+            liTgt.onclick = () => selectLanguage('tgt', l.code, l.pl);
             ulTgt.appendChild(liTgt);
         });
     }
@@ -129,8 +128,8 @@
     async function loadDictionaries() {
         try {
             const [r1, r2] = await Promise.all([
-                fetch('plToSlo.json'),
-                fetch('sloToPl.json')
+                fetch('osnova.json'),  // <-- zmienione
+                fetch('vuzor.json')    // <-- zmienione
             ]);
             plToSlo = await r1.json();
             sloToPl = await r2.json();
@@ -234,18 +233,17 @@
         populateDropdowns();
         const sL = localStorage.getItem('srcLang') || 'en';
         const tL = localStorage.getItem('tgtLang') || 'slo';
-        const srcName = languageData.find(x => x.code === sL)?.pl || 'Angielski';
-        const tgtName = languageData.find(x => x.code === tL)?.pl || 'Słowiański';
-        document.getElementById('srcLang').value = sL;
-        document.getElementById('srcDisplay').value = srcName;
-        document.getElementById('tgtLang').value = tL;
-        document.getElementById('tgtDisplay').value = tgtName;
+        const srcObj = languageData.find(x => x.code === sL) || languageData[0];
+        const tgtObj = languageData.find(x => x.code === tL) || languageData[2];
+        document.getElementById('srcLang').value = srcObj.code;
+        document.getElementById('srcDisplay').value = srcObj.pl;
+        document.getElementById('tgtLang').value = tgtObj.code;
+        document.getElementById('tgtDisplay').value = tgtObj.pl;
         await loadDictionaries();
         document.getElementById('userInput').addEventListener('input', debounce(translate, 400));
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.lang-combobox')) hideAllDropdowns();
         });
-        translate(); // initial
     }
 
     window.onload = init;
