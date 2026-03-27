@@ -1,1 +1,101 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Slovo Translator</title>
+    <style>
+        body { font-family: sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; background: #f4f4f9; }
+        .container { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        textarea { width: 100%; height: 150px; margin: 10px 0; padding: 10px; border-radius: 5px; border: 1px solid #ccc; font-size: 16px; }
+        select, button { padding: 10px; font-size: 16px; border-radius: 5px; }
+        button { background: #ff4b4b; color: white; border: none; cursor: pointer; width: 100%; }
+        button:hover { background: #ff3333; }
+        .result { margin-top: 20px; padding: 15px; background: #e7f3ff; border-radius: 5px; min-height: 50px; white-space: pre-wrap; }
+        .row { display: flex; gap: 10px; margin-bottom: 10px; }
+        .row div { flex: 1; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌐 Slovo Translator</h1>
+        <div class="row">
+            <div>
+                <label>Z języka:</label>
+                <select id="srcLang"><option value="auto">Automatyczny</option><option value="pl">Polski</option><option value="en">Angielski</option><option value="slo">Słowiański</option></select>
+            </div>
+            <div>
+                <label>Na język:</label>
+                <select id="tgtLang"><option value="slo">Słowiański</option><option value="pl">Polski</option><option value="en">Angielski</option></select>
+            </div>
+        </div>
+        <textarea id="userInput" placeholder="Wpisz tekst..."></textarea>
+        <button onclick="handleTranslate()">🔄 Tłumacz</button>
+        <h3>Wynik:</h3>
+        <div id="resultOutput" class="result"></div>
+    </div>
 
+    <script>
+        let dictionary = {};
+
+        // Ładowanie słowników z plików JSON
+        async function loadDictionaries() {
+            try {
+                const res1 = await fetch('osnova.json');
+                const res2 = await fetch('vuzor.json');
+                const data1 = await res1.json();
+                const data2 = await res2.json();
+                const combined = [...data1, ...data2];
+                combined.forEach(entry => {
+                    if(entry.polish && entry.slovian) {
+                        dictionary[entry.polish.toLowerCase().trim()] = entry.slovian.trim();
+                    }
+                });
+            } catch (e) { console.error("Błąd ładowania słowników", e); }
+        }
+
+        function translateSlovian(text) {
+            return text.replace(/\w+/g, (word) => {
+                const low = word.toLowerCase();
+                if (dictionary[low]) {
+                    const trans = dictionary[low];
+                    if (word[0] === word[0].toUpperCase()) return trans.charAt(0).toUpperCase() + trans.slice(1);
+                    return trans;
+                }
+                return word;
+            });
+        }
+
+        async function handleTranslate() {
+            const text = document.getElementById('userInput').value;
+            const src = document.getElementById('srcLang').value;
+            const tgt = document.getElementById('tgtLang').value;
+            const out = document.getElementById('resultOutput');
+            
+            if(!text.trim()) return;
+            out.innerText = "Tłumaczenie...";
+
+            try {
+                let processedText = text;
+                // Jeśli źródło nie jest polskie, a cel to 'slo', najpierw Google Translate na PL
+                if (src !== 'pl' && src !== 'slo' && tgt === 'slo') {
+                    const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=${src}&tl=pl&dt=t&q=${encodeURI(text)}`);
+                    const data = await res.json();
+                    processedText = data[0][0][0];
+                }
+
+                if (tgt === 'slo') {
+                    out.innerText = translateSlovian(processedText);
+                } else {
+                    // Standardowe Google Translate dla innych języków
+                    const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=${src === 'slo' ? 'pl' : src}&tl=${tgt}&dt=t&q=${encodeURI(processedText)}`);
+                    const data = await res.json();
+                    out.innerText = data[0][0][0];
+                }
+            } catch (e) { out.innerText = "Błąd połączenia z API."; }
+        }
+
+        loadDictionaries();
+    </script>
+</body>
+</html>
