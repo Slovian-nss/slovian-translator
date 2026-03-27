@@ -8,38 +8,22 @@
         :root { --primary: #007bff; --bg: #f0f2f5; --card: #ffffff; --text: #333; }
         * { box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; display: flex; justify-content: center; min-height: 100vh; }
-        .app-container { background: var(--card); padding: 20px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 100%; max-width: 900px; align-self: center; }
-        
-        h1 { text-align: center; color: var(--primary); margin: 0 0 20px 0; font-size: 24px; font-weight: 800; }
-        
+        .app-container { background: var(--card); padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 100%; max-width: 900px; align-self: center; }
+        h1 { text-align: center; color: var(--primary); margin: 0 0 20px 0; font-size: 26px; font-weight: 800; }
         .controls { display: flex; align-items: flex-end; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
-        .field-group { flex: 1; min-width: 140px; display: flex; flex-direction: column; }
+        .field-group { flex: 1; min-width: 200px; display: flex; flex-direction: column; }
         label { margin-bottom: 5px; font-weight: 600; font-size: 13px; color: #666; }
-        
         select, textarea { width: 100%; padding: 12px; border: 2px solid #eef0f2; border-radius: 12px; font-size: 16px; transition: 0.3s; background: #fff; }
-        select { cursor: pointer; height: 48px; }
-        
-        .swap-btn { background: #f8f9fa; border: 2px solid #eef0f2; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; display: flex; align-items: center; justify-content: center; margin-bottom: 4px; transition: 0.2s; }
-        .swap-btn:hover { background: #e9ecef; border-color: var(--primary); color: var(--primary); }
-
-        .input-wrapper { position: relative; margin-bottom: 15px; }
-        textarea { height: 160px; resize: none; line-height: 1.5; font-family: inherit; }
-        textarea:focus { border-color: var(--primary); outline: none; }
-
-        .action-bar { display: flex; gap: 10px; margin-top: 8px; }
-        .icon-btn { background: #f8f9fa; border: 1px solid #ddd; border-radius: 8px; padding: 8px 12px; cursor: pointer; font-size: 14px; display: flex; align-items: center; gap: 5px; transition: 0.2s; }
-        .icon-btn:hover { background: #eee; }
-
-        .result-display { padding: 20px; background: #f8f9fa; border-radius: 12px; border-left: 6px solid var(--primary); min-height: 100px; font-size: 18px; white-space: pre-wrap; margin-top: 10px; color: #222; }
-        
-        .status-bar { display: flex; justify-content: space-between; margin-top: 15px; font-size: 11px; color: #999; border-top: 1px solid #eee; padding-top: 10px; }
-
-        @media (max-width: 600px) {
-            .controls { flex-direction: column; align-items: center; }
-            .field-group { width: 100%; }
-            .swap-btn { transform: rotate(90deg); margin: 5px 0; }
-            h1 { font-size: 20px; }
-        }
+        select { cursor: pointer; height: 50px; appearance: none; background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; }
+        .swap-btn { background: #f8f9fa; border: 2px solid #eef0f2; border-radius: 50%; width: 44px; height: 44px; cursor: pointer; display: flex; align-items: center; justify-content: center; margin-bottom: 4px; transition: 0.2s; font-size: 20px; }
+        .swap-btn:hover { border-color: var(--primary); color: var(--primary); background: #fff; }
+        textarea { height: 180px; resize: none; line-height: 1.5; margin-top: 10px; }
+        .action-bar { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+        .icon-btn { background: #fff; border: 2px solid #eef0f2; border-radius: 10px; padding: 10px 16px; cursor: pointer; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; transition: 0.2s; }
+        .icon-btn:hover { border-color: var(--primary); background: #f0f7ff; }
+        .result-display { padding: 20px; background: #f8f9fa; border-radius: 12px; border-left: 6px solid var(--primary); min-height: 120px; font-size: 19px; white-space: pre-wrap; margin-top: 15px; color: #111; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); }
+        .status-bar { display: flex; justify-content: space-between; margin-top: 20px; font-size: 11px; color: #aaa; border-top: 1px solid #eee; padding-top: 10px; }
+        @media (max-width: 600px) { .controls { flex-direction: column; } .field-group { width: 100%; } .swap-btn { transform: rotate(90deg); align-self: center; } }
     </style>
 </head>
 <body>
@@ -49,83 +33,81 @@
     
     <div class="controls">
         <div class="field-group">
-            <label id="ui-label-from">Język źródłowy</label>
-            <select id="srcLang">
-                <option value="auto">Wykryj język</option>
-                <option value="slo">Slovian (Slavic)</option>
-                <option value="pl">Polski</option>
-                <option value="en">English</option>
-                <option value="cs">Čeština</option>
-                <option value="sk">Slovenčina</option>
-                <option value="de">Deutsch</option>
-                <option value="ru">Русский</option>
-                <option value="fr">Français</option>
-            </select>
+            <label id="ui-label-from">Z języka:</label>
+            <select id="srcLang"></select>
         </div>
         
-        <button class="swap-btn" onclick="swapLanguages()" title="Zamień języki">⇄</button>
+        <button class="swap-btn" onclick="swapLanguages()">⇄</button>
         
         <div class="field-group">
-            <label id="ui-label-to">Język docelowy</label>
-            <select id="tgtLang">
-                <option value="slo" selected>Slovian (Slavic)</option>
-                <option value="pl">Polski</option>
-                <option value="en">English</option>
-                <option value="de">Deutsch</option>
-                <option value="cs">Čeština</option>
-            </select>
+            <label id="ui-label-to">Na język:</label>
+            <select id="tgtLang"></select>
         </div>
     </div>
 
-    <div class="input-wrapper">
-        <textarea id="userInput" placeholder="..."></textarea>
-        <div class="action-bar">
-            <button class="icon-btn" onclick="pasteText()">📋 <span id="ui-paste">Wklej</span></button>
-            <button class="icon-btn" onclick="clearText()">🗑️ <span id="ui-clear">Usuń</span></button>
-        </div>
+    <textarea id="userInput" placeholder="..."></textarea>
+    
+    <div class="action-bar">
+        <button class="icon-btn" onclick="pasteText()">📋 <span id="ui-paste">Wklej</span></button>
+        <button class="icon-btn" onclick="clearText()">🗑️ <span id="ui-clear">Usuń</span></button>
+        <button class="icon-btn" onclick="copyText()" style="margin-left: auto;">✂️ <span id="ui-copy">Kopiuj</span></button>
     </div>
 
     <div id="resultOutput" class="result-display"></div>
-    
-    <div class="action-bar" style="margin-top: 10px;">
-        <button class="icon-btn" onclick="copyText()">✂️ <span id="ui-copy">Kopiuj wynik</span></button>
-    </div>
 
     <div class="status-bar">
-        <div id="dbStatus">Ładowanie bazy danych...</div>
-        <div>Slovo Engine v3.0</div>
+        <div id="dbStatus">...</div>
+        <div>Slovo Engine v4.0</div>
     </div>
 </div>
 
 <script>
     let plToSlo = {}, sloToPl = {};
     
-    // Konfiguracja interfejsu zależna od języka SYSTEMU
-    const uiLangs = {
-        pl: { title: "🌐 Slovo Tłumacz", from: "Z języka:", to: "Na język:", paste: "Wklej", clear: "Usuń", copy: "Kopiuj", placeholder: "Zacznij pisać tutaj..." },
-        en: { title: "🌐 Slovo Translator", from: "From:", to: "To:", paste: "Paste", clear: "Clear", copy: "Copy", placeholder: "Start typing..." },
-        slo: { title: "🌐 Slovo Perkladačь", from: "Iz:", to: "Na:", paste: "Vstavi", clear: "Očisti", copy: "Kopi", placeholder: "Načni pisati..." }
+    // Lista języków z nazwami w 3 trybach interfejsu
+    const languageData = [
+        { code: 'slo', pl: 'Słowiański', en: 'Slovian (Slavic)', slo: 'Slověnьsky', de: 'Slawisch' },
+        { code: 'pl', pl: 'Polski', en: 'Polish', slo: 'Poljsky', de: 'Polnisch' },
+        { code: 'en', pl: 'Angielski', en: 'English', slo: 'Anglijsky', de: 'Englisch' },
+        { code: 'de', pl: 'Niemiecki', en: 'German', slo: 'Německy', de: 'Deutsch' },
+        { code: 'cs', pl: 'Czeski', en: 'Czech', slo: 'Česky', de: 'Tschechisch' },
+        { code: 'sk', pl: 'Słowacki', en: 'Slovak', slo: 'Slovaky', de: 'Slowakisch' },
+        { code: 'ru', pl: 'Rosyjski', en: 'Russian', slo: 'Rusky', de: 'Russisch' },
+        { code: 'fr', pl: 'Francuski', en: 'French', slo: 'Francusky', de: 'Französisch' },
+        { code: 'es', pl: 'Hiszpański', en: 'Spanish', slo: 'Spansky', de: 'Spanisch' },
+        { code: 'it', pl: 'Włoski', en: 'Italian', slo: 'Italsky', de: 'Italienisch' },
+        { code: 'uk', pl: 'Ukraiński', en: 'Ukrainian', slo: 'Ukrajinsky', de: 'Ukrainisch' }
+    ];
+
+    const uiTranslations = {
+        pl: { title: "🌐 Slovo Tłumacz", from: "Z języka:", to: "Na język:", paste: "Wklej", clear: "Usuń", copy: "Kopiuj", placeholder: "Wpisz tekst..." },
+        en: { title: "🌐 Slovo Translator", from: "From language:", to: "To language:", paste: "Paste", clear: "Clear", copy: "Copy", placeholder: "Type here..." },
+        slo: { title: "🌐 Slovo Perkladačь", from: "Iz języka:", to: "Na język:", paste: "Vstavi", clear: "Izbriši", copy: "Kopi", placeholder: "Piši tu..." },
+        de: { title: "🌐 Slovo Übersetzer", from: "Von:", to: "Nach:", paste: "Einfügen", clear: "Löschen", copy: "Kopieren", placeholder: "Text eingeben..." }
     };
 
     async function init() {
-        const sysLang = navigator.language.split('-')[0];
-        applyUI(sysLang);
+        const sysLang = navigator.language.split('-')[0]; // Wykrywanie języka urządzenia
+        const uiKey = uiTranslations[sysLang] ? sysLang : 'en';
         
-        const savedSrc = localStorage.getItem('srcLang') || 'auto';
+        applyUI(uiKey);
+        populateLanguageLists(uiKey);
+        
+        // Przywracanie wyboru z pamięci
+        const savedSrc = localStorage.getItem('srcLang') || 'pl';
         const savedTgt = localStorage.getItem('tgtLang') || 'slo';
         document.getElementById('srcLang').value = savedSrc;
         document.getElementById('tgtLang').value = savedTgt;
 
         await loadDictionaries();
         
-        // Listenery
-        document.getElementById('userInput').oninput = debounce(() => translate(), 400);
-        document.getElementById('srcLang').onchange = () => { localStorage.setItem('srcLang', srcLang.value); translate(); };
-        document.getElementById('tgtLang').onchange = () => { localStorage.setItem('tgtLang', tgtLang.value); translate(); };
+        document.getElementById('userInput').oninput = debounce(() => translate(), 300);
+        document.getElementById('srcLang').onchange = (e) => { localStorage.setItem('srcLang', e.target.value); translate(); };
+        document.getElementById('tgtLang').onchange = (e) => { localStorage.setItem('tgtLang', e.target.value); translate(); };
     }
 
     function applyUI(lang) {
-        const ui = uiLangs[lang] || uiLangs.en;
+        const ui = uiTranslations[lang] || uiTranslations.en;
         document.getElementById('ui-title').innerText = ui.title;
         document.getElementById('ui-label-from').innerText = ui.from;
         document.getElementById('ui-label-to').innerText = ui.to;
@@ -133,6 +115,22 @@
         document.getElementById('ui-clear').innerText = ui.clear;
         document.getElementById('ui-copy').innerText = ui.copy;
         document.getElementById('userInput').placeholder = ui.placeholder;
+    }
+
+    function populateLanguageLists(uiLang) {
+        const srcSelect = document.getElementById('srcLang');
+        const tgtSelect = document.getElementById('tgtLang');
+        
+        srcSelect.innerHTML = "";
+        tgtSelect.innerHTML = "";
+
+        languageData.forEach(lang => {
+            const name = lang[uiLang] || lang.en;
+            const opt1 = new Option(name, lang.code);
+            const opt2 = new Option(name, lang.code);
+            srcSelect.add(opt1);
+            tgtSelect.add(opt2);
+        });
     }
 
     async function loadDictionaries() {
@@ -169,11 +167,11 @@
             } else if (src === 'pl' && tgt === 'slo') {
                 finalResult = dictReplace(text, plToSlo);
             } else if (src === 'slo') {
-                const plBridge = dictReplace(text, sloToPl);
-                finalResult = await google(plBridge, 'pl', tgt);
+                const bridge = dictReplace(text, sloToPl);
+                finalResult = await google(bridge, 'pl', tgt);
             } else if (tgt === 'slo') {
-                const plBridge = await google(text, src, 'pl');
-                finalResult = dictReplace(plBridge, plToSlo);
+                const bridge = await google(text, src, 'pl');
+                finalResult = dictReplace(bridge, plToSlo);
             } else {
                 finalResult = await google(text, src, tgt);
             }
@@ -203,14 +201,14 @@
         });
     }
 
-    // Funkcje przycisków
     function swapLanguages() {
         const src = document.getElementById('srcLang');
         const tgt = document.getElementById('tgtLang');
-        if (src.value === 'auto') return;
         const temp = src.value;
         src.value = tgt.value;
         tgt.value = temp;
+        localStorage.setItem('srcLang', src.value);
+        localStorage.setItem('tgtLang', tgt.value);
         translate();
     }
 
