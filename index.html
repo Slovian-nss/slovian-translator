@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,8 +13,8 @@
         .controls { display: flex; align-items: flex-end; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
         .field-group { flex: 1; min-width: 200px; display: flex; flex-direction: column; }
         label { margin-bottom: 5px; font-weight: 600; font-size: 13px; color: #666; }
-        select, textarea { width: 100%; padding: 12px; border: 2px solid #eef0f2; border-radius: 12px; font-size: 16px; transition: 0.3s; background: #fff; }
-        select { cursor: pointer; height: 50px; appearance: none; background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; }
+        select, textarea { width: 100%; padding: 12px; border: 2px solid #eef0f2; border-radius: 12px; font-size: 16px; transition: 0.3s; background: #fff; color: #333; }
+        select { cursor: pointer; height: 50px; appearance: none; background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 40px; }
         .swap-btn { background: #f8f9fa; border: 2px solid #eef0f2; border-radius: 50%; width: 44px; height: 44px; cursor: pointer; display: flex; align-items: center; justify-content: center; margin-bottom: 4px; transition: 0.2s; font-size: 20px; }
         .swap-btn:hover { border-color: var(--primary); color: var(--primary); background: #fff; }
         textarea { height: 180px; resize: none; line-height: 1.5; margin-top: 10px; }
@@ -33,14 +33,14 @@
     
     <div class="controls">
         <div class="field-group">
-            <label id="ui-label-from">Z języka:</label>
+            <label id="ui-label-from">From:</label>
             <select id="srcLang"></select>
         </div>
         
         <button class="swap-btn" onclick="swapLanguages()">⇄</button>
         
         <div class="field-group">
-            <label id="ui-label-to">Na język:</label>
+            <label id="ui-label-to">To:</label>
             <select id="tgtLang"></select>
         </div>
     </div>
@@ -48,15 +48,15 @@
     <textarea id="userInput" placeholder="..."></textarea>
     
     <div class="action-bar">
-        <button class="icon-btn" onclick="pasteText()">📋 <span id="ui-paste">Wklej</span></button>
-        <button class="icon-btn" onclick="clearText()">🗑️ <span id="ui-clear">Usuń</span></button>
-        <button class="icon-btn" onclick="copyText()" style="margin-left: auto;">✂️ <span id="ui-copy">Kopiuj</span></button>
+        <button class="icon-btn" onclick="pasteText()">📋 <span id="ui-paste">Paste</span></button>
+        <button class="icon-btn" onclick="clearText()">🗑️ <span id="ui-clear">Clear</span></button>
+        <button class="icon-btn" onclick="copyText()" style="margin-left: auto;">✂️ <span id="ui-copy">Copy</span></button>
     </div>
 
     <div id="resultOutput" class="result-display"></div>
 
     <div class="status-bar">
-        <div id="dbStatus">...</div>
+        <div id="dbStatus">Loading...</div>
         <div>Slovo Engine v4.0</div>
     </div>
 </div>
@@ -64,44 +64,54 @@
 <script>
     let plToSlo = {}, sloToPl = {};
     
-    // Lista języków z nazwami w 3 trybach interfejsu
     const languageData = [
+        { code: 'en', pl: 'Angielski', en: 'English', slo: 'Angol'ьsky', de: 'Englisch' },
         { code: 'slo', pl: 'Słowiański', en: 'Slovian (Slavic)', slo: 'Slověnьsky', de: 'Slawisch' },
         { code: 'pl', pl: 'Polski', en: 'Polish', slo: 'Pol'ьsky', de: 'Polnisch' },
-        { code: 'en', pl: 'Angielski', en: 'English', slo: 'Angol'ьsky', de: 'Englisch' },
         { code: 'de', pl: 'Niemiecki', en: 'German', slo: 'Nemьčьsky', de: 'Deutsch' },
         { code: 'cs', pl: 'Czeski', en: 'Czech', slo: 'Češьsky', de: 'Tschechisch' },
         { code: 'sk', pl: 'Słowacki', en: 'Slovak', slo: 'Slovačьsky', de: 'Slowakisch' },
         { code: 'ru', pl: 'Rosyjski', en: 'Russian', slo: 'Rusьsky', de: 'Russisch' },
-        { code: 'fr', pl: 'Francuski', en: 'French', slo: 'Francešьsky', de: 'Französisch' },
+        { code: 'fr', pl: 'Francuski', en: 'French', slo: 'Franьsky', de: 'Französisch' },
         { code: 'es', pl: 'Hiszpański', en: 'Spanish', slo: 'Španьsky', de: 'Spanisch' },
-        { code: 'it', pl: 'Włoski', en: 'Italian', slo: 'Vološьsky', de: 'Italienisch' },
+        { code: 'it', pl: 'Włoski', en: 'Italian', slo: 'Volšьsky', de: 'Italienisch' },
         { code: 'uk', pl: 'Ukraiński', en: 'Ukrainian', slo: 'Ukrajinьsky', de: 'Ukrainisch' }
     ];
 
     const uiTranslations = {
         pl: { title: "🌐 Slovo Tłumacz", from: "Z języka:", to: "Na język:", paste: "Wklej", clear: "Usuń", copy: "Kopiuj", placeholder: "Wpisz tekst..." },
         en: { title: "🌐 Slovo Translator", from: "From language:", to: "To language:", paste: "Paste", clear: "Clear", copy: "Copy", placeholder: "Type here..." },
-        slo: { title: "🌐 Slovo Perkladačь", from: "Iz języka:", to: "Na język:", paste: "Vstavi", clear: "Izbriši", copy: "Kopi", placeholder: "Piši tu..." },
+        slo: { title: "🌐 Slovo Perkladačь", from: "Jiz ęzyka:", to: "Na ęzyk:", paste: "Vyloži", clear: "Terbi", copy: "Poveli", placeholder: "Piši tu..." },
         de: { title: "🌐 Slovo Übersetzer", from: "Von:", to: "Nach:", paste: "Einfügen", clear: "Löschen", copy: "Kopieren", placeholder: "Text eingeben..." }
     };
 
     async function init() {
-        const sysLang = navigator.language.split('-')[0]; // Wykrywanie języka urządzenia
+        // 1. Wykrywanie języka urządzenia
+        const sysLang = navigator.language.split('-')[0];
         const uiKey = uiTranslations[sysLang] ? sysLang : 'en';
         
+        // 2. Aplikowanie interfejsu i list
         applyUI(uiKey);
         populateLanguageLists(uiKey);
         
-        // Przywracanie wyboru z pamięci
-        const savedSrc = localStorage.getItem('srcLang') || 'pl';
-        const savedTgt = localStorage.getItem('tgtLang') || 'slo';
+        // 3. Logika domyślnych języków tłumaczenia
+        let defaultSrc = 'en';
+        let defaultTgt = 'slo';
+
+        // Jeśli system jest polski, ustaw domyślnie PL -> SLO
+        if(sysLang === 'pl') { defaultSrc = 'pl'; }
+
+        const savedSrc = localStorage.getItem('srcLang') || defaultSrc;
+        const savedTgt = localStorage.getItem('tgtLang') || defaultTgt;
+        
         document.getElementById('srcLang').value = savedSrc;
         document.getElementById('tgtLang').value = savedTgt;
 
+        // 4. Ładowanie słowników
         await loadDictionaries();
         
-        document.getElementById('userInput').oninput = debounce(() => translate(), 300);
+        // Eventy
+        document.getElementById('userInput').addEventListener('input', debounce(() => translate(), 300));
         document.getElementById('srcLang').onchange = (e) => { localStorage.setItem('srcLang', e.target.value); translate(); };
         document.getElementById('tgtLang').onchange = (e) => { localStorage.setItem('tgtLang', e.target.value); translate(); };
     }
@@ -121,19 +131,18 @@
         const srcSelect = document.getElementById('srcLang');
         const tgtSelect = document.getElementById('tgtLang');
         
-        srcSelect.innerHTML = "";
-        tgtSelect.innerHTML = "";
+        srcSelect.options.length = 0;
+        tgtSelect.options.length = 0;
 
         languageData.forEach(lang => {
             const name = lang[uiLang] || lang.en;
-            const opt1 = new Option(name, lang.code);
-            const opt2 = new Option(name, lang.code);
-            srcSelect.add(opt1);
-            tgtSelect.add(opt2);
+            srcSelect.add(new Option(name, lang.code));
+            tgtSelect.add(new Option(name, lang.code));
         });
     }
 
     async function loadDictionaries() {
+        const status = document.getElementById('dbStatus');
         try {
             const files = ['osnova.json', 'vuzor.json'];
             for (const file of files) {
@@ -148,8 +157,8 @@
                     });
                 }
             }
-            document.getElementById('dbStatus').innerText = "Baza gotowa.";
-        } catch (e) { document.getElementById('dbStatus').innerText = "Błąd bazy."; }
+            status.innerText = "Engine Ready.";
+        } catch (e) { status.innerText = "Dict Error."; }
     }
 
     async function translate() {
@@ -176,7 +185,7 @@
                 finalResult = await google(text, src, tgt);
             }
             out.innerText = finalResult || "";
-        } catch (e) { out.innerText = "..."; }
+        } catch (e) { out.innerText = "Translation error..."; }
     }
 
     async function google(text, s, t) {
@@ -213,9 +222,11 @@
     }
 
     async function pasteText() {
-        const text = await navigator.clipboard.readText();
-        document.getElementById('userInput').value = text;
-        translate();
+        try {
+            const text = await navigator.clipboard.readText();
+            document.getElementById('userInput').value = text;
+            translate();
+        } catch(e) { alert("Please allow clipboard access"); }
     }
 
     function copyText() {
@@ -236,7 +247,8 @@
         };
     }
 
-    init();
+    // Start
+    window.onload = init;
 </script>
 </body>
 </html>
