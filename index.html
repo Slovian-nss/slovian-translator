@@ -1,116 +1,167 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-  <meta charset="UTF-8">
-  <title>Slovian Translator</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #0f172a;
-      color: #e2e8f0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
-    }
-
-    .container {
-      background: #1e293b;
-      padding: 30px;
-      border-radius: 16px;
-      width: 420px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
-    }
-
-    h1 {
-      text-align: center;
-      margin-bottom: 20px;
-    }
-
-    input, select, button {
-      width: 100%;
-      padding: 10px;
-      margin: 8px 0;
-      border-radius: 8px;
-      border: none;
-      font-size: 16px;
-    }
-
-    input, select {
-      background: #334155;
-      color: white;
-    }
-
-    button {
-      background: #22c55e;
-      color: black;
-      font-weight: bold;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background: #16a34a;
-    }
-
-    .result {
-      margin-top: 20px;
-      padding: 15px;
-      background: #020617;
-      border-radius: 10px;
-      text-align: center;
-      font-size: 20px;
-      min-height: 40px;
-    }
-
-    .direction {
-      display: flex;
-      gap: 10px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Slovo Translator - System Hybrydowy</title>
+    <style>
+        :root { --primary: #007bff; --bg: #f0f2f5; --text: #333; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .app-container { background: white; padding: 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 850px; }
+        h1 { text-align: center; color: var(--primary); margin-bottom: 25px; font-size: 28px; }
+        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 14px; }
+        select, textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
+        textarea { height: 160px; border: 2px solid #eee; transition: border-color 0.3s; }
+        textarea:focus { border-color: var(--primary); outline: none; }
+        button { width: 100%; padding: 15px; background: var(--primary); color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 15px; transition: transform 0.1s, background 0.3s; }
+        button:hover { background: #0056b3; }
+        button:active { transform: scale(0.98); }
+        .output-label { margin-top: 25px; display: block; font-weight: bold; color: #555; }
+        .result-display { margin-top: 10px; padding: 20px; background: #f8f9fa; border-radius: 8px; border-left: 5px solid var(--primary); min-height: 60px; font-size: 18px; line-height: 1.5; white-space: pre-wrap; }
+        .status-info { font-size: 12px; color: #888; text-align: center; margin-top: 15px; }
+    </style>
 </head>
 <body>
 
-<div class="container">
-  <h1>Slovian Translator</h1>
+<div class="app-container">
+    <h1>🌐 Slovo Translator</h1>
+    
+    <div class="controls">
+        <div>
+            <label>Język źródłowy:</label>
+            <select id="srcLang">
+                <option value="auto">Wykryj automatycznie</option>
+                <option value="en">Angielski (English)</option>
+                <option value="pl">Polski</option>
+                <option value="de">Niemiecki (Deutsch)</option>
+                <option value="fr">Francuski (Français)</option>
+                <option value="es">Hiszpański (Español)</option>
+                <option value="slo">Słowiański (Slovjan)</option>
+            </select>
+        </div>
+        <div>
+            <label>Język docelowy:</label>
+            <select id="tgtLang">
+                <option value="slo" selected>Słowiański (Slovjan)</option>
+                <option value="pl">Polski</option>
+                <option value="en">Angielski (English)</option>
+                <option value="de">Niemiecki (Deutsch)</option>
+            </select>
+        </div>
+    </div>
 
-  <div class="direction">
-    <select id="direction">
-      <option value="pl-sl">Polski → Slovian</option>
-      <option value="sl-pl">Slovian → Polski</option>
-    </select>
-  </div>
+    <textarea id="userInput" placeholder="Wpisz tekst tutaj..."></textarea>
+    
+    <button id="btnTranslate">🔄 Tłumacz teraz</button>
 
-  <input type="text" id="inputText" placeholder="Wpisz słowo..." />
+    <span class="output-label">Wynik:</span>
+    <div id="resultOutput" class="result-display">Czekam na tekst...</div>
 
-  <button onclick="translate()">Tłumacz</button>
-
-  <div class="result" id="result"></div>
+    <div class="status-info" id="dbStatus">Ładowanie bazy danych słów...</div>
 </div>
 
 <script>
-async function translate() {
-  const text = document.getElementById("inputText").value;
-  const direction = document.getElementById("direction").value;
+    let plToSlo = {};
+    let sloToPl = {};
 
-  if (!text) return;
+    // 1. Inicjalizacja: Pobieranie danych z Twoich plików JSON
+    async function loadData() {
+        const status = document.getElementById('dbStatus');
+        try {
+            const files = ['osnova.json', 'vuzor.json'];
+            let count = 0;
+            for (const file of files) {
+                const response = await fetch(file);
+                if (response.ok) {
+                    const data = await response.json();
+                    data.forEach(item => {
+                        if (item.polish && item.slovian) {
+                            const p = item.polish.toLowerCase().trim();
+                            const s = item.slovian.trim();
+                            plToSlo[p] = s;
+                            sloToPl[s.toLowerCase().trim()] = p;
+                            count++;
+                        }
+                    });
+                }
+            }
+            status.innerText = `Baza gotowa: załadowano ${count} form językowych.`;
+        } catch (err) {
+            status.innerHTML = `<b style="color:red">Błąd bazy:</b> Nie znaleziono plików JSON.`;
+            console.error(err);
+        }
+    }
 
-  try {
-    const response = await fetch(`/translate?word=${encodeURIComponent(text)}&dir=${direction}`);
-    const data = await response.text();
+    // 2. Funkcja pomocnicza dla Google Translate API (Free Bridge)
+    async function callGoogle(text, sl, tl) {
+        if (sl === tl) return text;
+        try {
+            const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sl}&tl=${tl}&dt=t&q=${encodeURIComponent(text)}`;
+            const response = await fetch(url);
+            const data = await response.json();
+            return data[0].map(part => part[0]).join('');
+        } catch (e) {
+            return text; // W razie błędu zwraca tekst oryginalny
+        }
+    }
 
-    document.getElementById("result").innerText = data;
-  } catch (e) {
-    document.getElementById("result").innerText = "Błąd połączenia z backendem";
-  }
-}
+    // 3. Logika zamiany słów z zachowaniem wielkości liter i interpunkcji
+    function processTranslation(text, dictionary) {
+        // Regex dopasowujący słowa (również z polskimi znakami)
+        return text.replace(/[a-ząćęłńóśźż]+/gi, (match) => {
+            const lowerMatch = match.toLowerCase();
+            if (dictionary[lowerMatch]) {
+                const replacement = dictionary[lowerMatch];
+                // Zachowanie wielkości liter
+                if (match === match.toUpperCase()) return replacement.toUpperCase();
+                if (match[0] === match[0].toUpperCase()) return replacement.charAt(0).toUpperCase() + replacement.slice(1);
+                return replacement;
+            }
+            return match; // Jeśli brak w słowniku, zostaw oryginał
+        });
+    }
 
-// Enter = translate
-document.getElementById("inputText").addEventListener("keypress", function(e) {
-  if (e.key === "Enter") {
-    translate();
-  }
-});
+    // 4. Główna funkcja przycisku
+    async function performTranslation() {
+        const input = document.getElementById('userInput').value;
+        const src = document.getElementById('srcLang').value;
+        const tgt = document.getElementById('tgtLang').value;
+        const out = document.getElementById('resultOutput');
+
+        if (!input.trim()) return;
+        out.innerText = "Tłumaczenie w toku...";
+
+        try {
+            let polishBridge = "";
+
+            // FAZA A: Sprowadzenie wszystkiego do języka Polskiego
+            if (src === 'slo') {
+                polishBridge = processTranslation(input, sloToPl);
+            } else if (src === 'pl') {
+                polishBridge = input;
+            } else {
+                polishBridge = await callGoogle(input, src, 'pl');
+            }
+
+            // FAZA B: Z Polskiego na docelowy (Słowiański lub inny)
+            if (tgt === 'slo') {
+                out.innerText = processTranslation(polishBridge, plToSlo);
+            } else if (tgt === 'pl') {
+                out.innerText = polishBridge;
+            } else {
+                // Jeśli celem jest np. angielski, najpierw przetłumacz na polski w JSON, a potem Googlem na docelowy
+                // (W tym przypadku bierzemy polski mostek i ślemy do Google)
+                out.innerText = await callGoogle(polishBridge, 'pl', tgt);
+            }
+        } catch (err) {
+            out.innerText = "Błąd tłumaczenia. Spróbuj ponownie.";
+        }
+    }
+
+    // Podpięcie zdarzeń
+    document.getElementById('btnTranslate').onclick = performTranslation;
+    window.onload = loadData;
 </script>
 
 </body>
