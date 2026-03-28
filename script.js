@@ -57,7 +57,7 @@ const languageData = [
 const uiTranslations = {
     pl: { title: "🌐 Slovo Tłumacz", from: "Z języka:", to: "Na język:", paste: "Wklej", clear: "Usuń", copy: "Kopiuj", placeholder: "Wpisz tekst..." },
     en: { title: "🌐 Slovo Translator", from: "From language:", to: "To language:", paste: "Paste", clear: "Clear", copy: "Copy", placeholder: "Type here..." },
-    slo: { title: "🌐 Slovo Perkladačь", from: "Iz języka:", to: "Na język:", paste: "Vstavi", clear: "Izbriši", copy: "Kopi", placeholder: "Piši tu..." },
+    slo: { title: "🌐 Slovo Perkladačь", from: "Jiz ęzyka:", to: "Na ęzyk:", paste: "Vyloži", clear: "Terbi", copy: "Poveli", placeholder: "Piši tu..." },
     de: { title: "🌐 Slovo Übersetzer", from: "Von:", to: "Nach:", paste: "Einfügen", clear: "Löschen", copy: "Kopieren", placeholder: "Text eingeben..." }
 };
 
