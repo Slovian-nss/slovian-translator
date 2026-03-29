@@ -13,16 +13,18 @@ const languageData = [
     { code: 'es', pl: 'Hiszpański', en: 'Spanish', slo: 'Španьsky', de: 'Spanisch' },
     { code: 'it', pl: 'Włoski', en: 'Italian', slo: 'Volšьsky', de: 'Italienisch' },
     { code: 'uk', pl: 'Ukraiński', en: 'Ukrainian', slo: 'Ukrajinьsky', de: 'Ukrainisch' },
-    { code: 'ja', pl: 'Japoński', en: 'Japanese', slo: 'Japonьsky', de: 'Japanisch' }
+    { code: 'ja', pl: 'Japoński', en: 'Japanese', slo: 'Japonьsky', de: 'Japanisch' },
+    { code: 'tr', pl: 'Turecki', en: 'Turkish', slo: 'Turečьsky', de: 'Türkisch' }
 ];
 
 const uiTranslations = {
     slo: { title: "Slovo Perkladačь", from: "Jiz ęzyka:", to: "Na ęzyk:", paste: "Vyloži", clear: "Terbi", copy: "Poveli", placeholder: "Piši tu..." },
     pl: { title: "Slovo Tłumacz", from: "Z języka:", to: "Na język:", paste: "Wklej", clear: "Usuń", copy: "Kopiuj", placeholder: "Wpisz tekst..." },
-    en: { title: "Slovo Translator", from: "From language:", to: "To language:", paste: "Paste", clear: "Clear", copy: "Copy", placeholder: "Type here..." }
+    en: { title: "Slovo Translator", from: "From language:", to: "To language:", paste: "Paste", clear: "Clear", copy: "Copy", placeholder: "Type here..." },
+    de: { title: "Slovo Übersetzer", from: "Von:", to: "Nach:", paste: "Einfügen", clear: "Löschen", copy: "Kopieren", placeholder: "Text eingeben..." }
 };
 
-// Funkcja pomocnicza do zachowania wielkości liter
+// Zachowuje wielkość liter (Case Sensitive)
 function preserveCase(original, translated) {
     if (!translated) return original;
     if (original === original.toUpperCase() && original.length > 1) return translated.toUpperCase();
@@ -30,52 +32,63 @@ function preserveCase(original, translated) {
     return translated.toLowerCase();
 }
 
+// Tłumaczy słowa, ignorując linki, liczby i interpunkcję
 function dictReplace(text, dict) {
     if (!text) return "";
-    // Regex wyłapuje słowa (w tym te z apostrofami i znakami specjalnymi słowiańskimi)
-    return text.replace(/[a-ząćęłńóśźżěьъ']+/gi, (word) => {
+    // Wykrywa słowa (w tym z apostrofem i znakami słowiańskimi), omija linki i e-maile
+    const urlRegex = /(https?:\/\/[^\s]+|[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g;
+    
+    // Najpierw zabezpieczamy linki
+    let placeholders = [];
+    let tempText = text.replace(urlRegex, (match) => {
+        placeholders.push(match);
+        return `__URL_PH_${placeholders.length - 1}__`;
+    });
+
+    // Tłumaczymy słowa
+    tempText = tempText.replace(/[a-ząćęłńóśźżěьъ']+/gi, (word) => {
         const lowWord = word.toLowerCase();
         if (dict[lowWord]) {
             return preserveCase(word, dict[lowWord]);
         }
         return word;
     });
+
+    // Przywracamy linki
+    return tempText.replace(/__URL_PH_(\d+)__/g, (match, id) => placeholders[id]);
 }
 
+// Zamienia szyk: jeśli Rzeczownik + Przymiotnik -> Przymiotnik + Rzeczownik
 function reorderSmart(text) {
     if (!text) return "";
-    
-    // Rozbijamy tekst na części (słowa + separatory/interpunkcja)
-    const tokens = text.split(/(\s+|[.,!?;:()]+)/);
+    // Dzieli na słowa, spacje i znaki interpunkcyjne
+    const tokens = text.split(/(\s+|[.,!?;:()=+\-%*/]+)/g).filter(t => t !== "" && t !== undefined);
     const result = [];
-    
+
     for (let i = 0; i < tokens.length; i++) {
         let token = tokens[i];
-        if (!token || token.trim() === "" || /[.,!?;:()]+/.test(token)) {
+        let lowToken = token.toLowerCase();
+
+        // Jeśli to spacja lub interpunkcja, dodaj i leć dalej
+        if (/^[\s.,!?;:()=+\-%*/]+$/.test(token)) {
             result.push(token);
             continue;
         }
 
-        let currentLow = token.toLowerCase();
         let nextIdx = i + 1;
-        
-        // Szukamy następnego "prawdziwego" słowa (pomijając spacje)
-        while (nextIdx < tokens.length && tokens[nextIdx].trim() === "") nextIdx++;
-        
+        // Szukaj następnego słowa (pomiń tylko spacje)
+        while (nextIdx < tokens.length && /^[\s]+$/.test(tokens[nextIdx])) nextIdx++;
+
         if (nextIdx < tokens.length) {
             let nextToken = tokens[nextIdx];
             let nextLow = nextToken.toLowerCase();
 
-            // LOGIKA ZAMIANY: Jeśli mamy Rzeczownik + Przymiotnik (np. Język Polski)
-            if (wordTypes[currentLow] === "noun" && wordTypes[nextLow] === "adjective") {
-                // Zamień miejscami
-                result.push(nextToken); // Przymiotnik pierwszy
-                
-                // Dodaj to, co było między nimi (np. spację)
-                for (let j = i + 1; j < nextIdx; j++) result.push(tokens[j]);
-                
-                result.push(token); // Rzeczownik drugi
-                i = nextIdx; // Przesuń licznik
+            // LOGIKA ZAMIANY (Rzeczownik + Przymiotnik -> Przymiotnik + Rzeczownik)
+            if (wordTypes[lowToken] === "noun" && wordTypes[nextLow] === "adjective") {
+                result.push(nextToken); // Przymiotnik najpierw
+                for (let j = i + 1; j < nextIdx; j++) result.push(tokens[j]); // Spacje pomiędzy
+                result.push(token); // Rzeczownik potem
+                i = nextIdx;
                 continue;
             }
         }
@@ -142,16 +155,17 @@ async function loadDictionaries() {
 
                         if (item["type and case"]) {
                             const info = item["type and case"].toLowerCase();
-                            if (info.includes("m.") || info.includes("f.") || info.includes("n.")) wordTypes[slo] = "noun";
-                            if (info.includes("adj.")) wordTypes[slo] = "adjective";
-                            if (info.includes("num.")) wordTypes[slo] = "numeral";
+                            // Dopasowanie do Twojego formatu: jimenьnik (noun), priloga (adj), ličьnik (num)
+                            if (info.includes("jimenьnik") || info.includes("noun")) wordTypes[slo] = "noun";
+                            if (info.includes("priloga") || info.includes("adjective")) wordTypes[slo] = "adjective";
+                            if (info.includes("ličьnik") || info.includes("numeral")) wordTypes[slo] = "numeral";
                         }
                     }
                 });
             }
         }
-        if (status) status.innerText = "Silnik gotowy.";
-    } catch (e) { if (status) status.innerText = "Błąd słowników."; }
+        if (status) status.innerText = "Engine Ready.";
+    } catch (e) { if (status) status.innerText = "Dict Error."; }
 }
 
 async function init() {
@@ -167,7 +181,6 @@ async function init() {
     document.getElementById('tgtLang').value = savedTgt;
 
     await loadDictionaries();
-
     document.getElementById('userInput').addEventListener('input', debounce(() => translate(), 300));
 }
 
@@ -176,7 +189,7 @@ function applyUI(lang) {
     const ids = ['ui-title', 'ui-label-from', 'ui-label-to', 'ui-paste', 'ui-clear', 'ui-copy'];
     ids.forEach(id => {
         const el = document.getElementById(id);
-        if (el) el.innerText = ui[id.replace('ui-', '')];
+        if (el) el.innerText = ui[id.replace('ui-', '')] || "";
     });
     const input = document.getElementById('userInput');
     if (input) input.placeholder = ui.placeholder;
@@ -209,7 +222,16 @@ function clearText() {
 }
 
 function copyText() {
-    navigator.clipboard.writeText(document.getElementById('resultOutput').innerText);
+    const text = document.getElementById('resultOutput').innerText;
+    navigator.clipboard.writeText(text);
+}
+
+async function pasteText() {
+    try {
+        const text = await navigator.clipboard.readText();
+        document.getElementById('userInput').value = text;
+        translate();
+    } catch(e) { console.log("Clipboard error"); }
 }
 
 function debounce(func, wait) {
