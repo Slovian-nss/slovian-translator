@@ -1,6 +1,6 @@
 let plToSlo = {}, sloToPl = {};
-let wordTypes = {};   // noun / adjective / numeral
-let wordCases = {};   // info o przypadkach (na przyszłość)
+let wordTypes = {};
+let wordCases = {};
 
 const languageData = [
     { code: 'slo', pl: 'Słowiański', en: 'Slovian (Slavic)', slo: 'Slověnьsky', de: 'Slawisch' },
@@ -54,24 +54,15 @@ const languageData = [
     { code: 'vi', pl: 'Wietnamski', en: 'Vietnamese', slo: 'Větnamьsky', de: 'Vietnamesisch' }
 ];
 
-// =========================
-// SMART SYNTAX ENGINE
-// =========================
 function reorderSmart(text) {
     const words = text.split(/\s+/);
     const result = [];
     let i = 0;
-
     while (i < words.length) {
-        let group = {
-            numeral: null,
-            modifiers: [],
-            adjectives: [],
-            noun: null
-        };
+        let group = { numeral: null, modifiers: [], adjectives: [], noun: null };
+        const w = words[i]?.toLowerCase();
 
-        // modifiers (bardzo itd.)
-        while (["bardzo","velmi"].includes(words[i]?.toLowerCase())) {
+        while (["bardzo", "velmi"].includes(w)) {
             group.modifiers.push(words[i]);
             i++;
         }
@@ -94,17 +85,12 @@ function reorderSmart(text) {
             if (group.adjectives.length) result.push(...group.adjectives);
             result.push(group.noun);
         } else {
-            result.push(words[i] || "");
+            if (words[i]) result.push(words[i]);
             i++;
         }
     }
-
     return result.join(" ");
 }
-
-// =========================
-// RESZTA BEZ ZMIAN + PODMIANA
-// =========================
 
 function dictReplace(text, dict) {
     return text.replace(/[a-ząćęłńóśźżěьъ]+/gi, (m) => {
@@ -124,34 +110,25 @@ async function translate() {
     const src = document.getElementById('srcLang').value;
     const tgt = document.getElementById('tgtLang').value;
     const out = document.getElementById('resultOutput');
-
     if (!text) { out.innerText = ""; return; }
-
     try {
         let finalResult = "";
-
         if (src === 'slo' && tgt === 'pl') {
             finalResult = dictReplace(text, sloToPl);
-
         } else if (src === 'pl' && tgt === 'slo') {
             let temp = dictReplace(text, plToSlo);
             finalResult = reorderSmart(temp);
-
         } else if (src === 'slo') {
             const bridge = dictReplace(text, sloToPl);
             finalResult = await google(bridge, 'pl', tgt);
-
         } else if (tgt === 'slo') {
             const bridge = await google(text, src, 'pl');
             let temp = dictReplace(bridge, plToSlo);
             finalResult = reorderSmart(temp);
-
         } else {
             finalResult = await google(text, src, tgt);
         }
-
         out.innerText = finalResult || "";
-
     } catch (e) {
         out.innerText = "Translation error...";
     }
@@ -168,57 +145,41 @@ async function google(text, s, t) {
 
 async function loadDictionaries() {
     const status = document.getElementById('dbStatus');
-
     try {
         const files = ['osnova.json', 'vuzor.json'];
-
         for (const file of files) {
             const res = await fetch(file);
             if (res.ok) {
                 const data = await res.json();
-
                 data.forEach(item => {
                     if (item.polish && item.slovian) {
                         const pl = item.polish.toLowerCase().trim();
                         const slo = item.slovian.toLowerCase().trim();
-
                         plToSlo[pl] = item.slovian.trim();
                         sloToPl[slo] = item.polish.trim();
-
                         if (item["type and case"]) {
                             const info = item["type and case"].toLowerCase();
-
                             if (info.includes("noun")) wordTypes[slo] = "noun";
                             if (info.includes("adjective")) wordTypes[slo] = "adjective";
                             if (info.includes("numeral")) wordTypes[slo] = "numeral";
-
                             wordCases[slo] = info;
                         }
                     }
                 });
             }
         }
-
         status.innerText = "Engine Ready.";
-
     } catch (e) {
         status.innerText = "Dict Error.";
     }
 }
 
-// =========================
-// INIT + UI
-// =========================
-
 async function init() {
     const sysLang = navigator.language.split('-')[0];
     const uiKey = uiTranslations[sysLang] ? sysLang : 'en';
-
     applyUI(uiKey);
     populateLanguageLists(uiKey);
-
     await loadDictionaries();
-
     document.getElementById('userInput')
         .addEventListener('input', debounce(() => translate(), 300));
 }
@@ -237,10 +198,8 @@ function applyUI(lang) {
 function populateLanguageLists(uiLang) {
     const srcSelect = document.getElementById('srcLang');
     const tgtSelect = document.getElementById('tgtLang');
-
     srcSelect.options.length = 0;
     tgtSelect.options.length = 0;
-
     languageData.forEach(lang => {
         const name = lang[uiLang] || lang.en;
         srcSelect.add(new Option(name, lang.code));
@@ -251,11 +210,9 @@ function populateLanguageLists(uiLang) {
 function swapLanguages() {
     const src = document.getElementById('srcLang');
     const tgt = document.getElementById('tgtLang');
-
     const temp = src.value;
     src.value = tgt.value;
     tgt.value = temp;
-
     translate();
 }
 
