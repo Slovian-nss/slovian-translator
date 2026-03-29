@@ -2,50 +2,66 @@ let plToSlo = {}, sloToPl = {};
 let wordTypes = {};
 
 const languageData = [
-    { code: 'slo', pl: 'Słowiański', en: 'Slovian (Slavic)', slo: 'Slověnьsky' },
-    { code: 'pl', pl: 'Polski', en: 'Polish', slo: "Pol'ьsky" },
-    { code: 'en', pl: 'Angielski', en: 'English', slo: "Angol'ьsky" }
+    { code: 'slo', pl: 'Słowiański', en: 'Slovian (Slavic)', slo: 'Slověnьsky', de: 'Slawisch' },
+    { code: 'en', pl: 'Angielski', en: 'English', slo: "Angol'ьsky", de: 'Englisch' },
+    { code: 'pl', pl: 'Polski', en: 'Polish', slo: "Pol'ьsky", de: 'Polnisch' },
+    { code: 'de', pl: 'Niemiecki', en: 'German', slo: 'Nemьčьsky', de: 'Deutsch' },
+    { code: 'cs', pl: 'Czeski', en: 'Czech', slo: 'Češьsky', de: 'Tschechisch' },
+    { code: 'sk', pl: 'Słowacki', en: 'Slovak', slo: 'Slovačьsky', de: 'Slowakisch' },
+    { code: 'ru', pl: 'Rosyjski', en: 'Russian', slo: 'Rusьsky', de: 'Russisch' }
 ];
 
-// Funkcja pomocnicza do sprawdzania wielkości liter
-function getCase(word) {
-    if (!word) return "lower";
+const uiTranslations = {
+    slo: { title: "Slovo Perkladačь", from: "Jiz ęzyka:", to: "Na ęzyk:", paste: "Vyloži", clear: "Terbi", copy: "Poveli", placeholder: "Piši tu..." },
+    pl: { title: "Slovo Tłumacz", from: "Z języka:", to: "Na język:", paste: "Wklej", clear: "Usuń", copy: "Kopiuj", placeholder: "Wpisz tekst..." },
+    en: { title: "Slovo Translator", from: "From language:", to: "To language:", paste: "Paste", clear: "Clear", copy: "Copy", placeholder: "Type here..." }
+};
+
+// --- FUNKCJA ZARZĄDZAJĄCA WIELKOŚCIĄ LITER ---
+function fixCase(text, originalType) {
+    if (!text) return "";
+    if (originalType === "upper") return text.toUpperCase();
+    if (originalType === "title") return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
+    return text.toLowerCase();
+}
+
+function getCaseType(word) {
     if (word === word.toUpperCase() && word.length > 1) return "upper";
     if (word[0] === word[0].toUpperCase()) return "title";
     return "lower";
 }
 
-// Funkcja ustawiająca wielkość liter
-function applyCase(word, caseType) {
-    if (!word) return "";
-    if (caseType === "upper") return word.toUpperCase();
-    if (caseType === "title") return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-    return word.toLowerCase();
-}
-
 function dictReplace(text, dict) {
     if (!text) return "";
-    return text.replace(/[a-ząćęłńóśźżěьъ']+/gi, (word) => {
+    const urlRegex = /(https?:\/\/[^\s]+|[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g;
+    let placeholders = [];
+    let tempText = text.replace(urlRegex, (match) => {
+        placeholders.push(match);
+        return `__URL_PH_${placeholders.length - 1}__`;
+    });
+
+    tempText = tempText.replace(/[a-ząćęłńóśźżěьъ']+/gi, (word) => {
         const lowWord = word.toLowerCase();
         if (dict[lowWord]) {
-            return applyCase(dict[lowWord], getCase(word));
+            return fixCase(dict[lowWord], getCaseType(word));
         }
         return word;
     });
+
+    return tempText.replace(/__URL_PH_(\d+)__/g, (match, id) => placeholders[id]);
 }
 
+// --- ZMODYFIKOWANA FUNKCJA SZYKU Z KOREKTĄ WIELKOŚCI LITER ---
 function reorderSmart(text) {
     if (!text) return "";
-    // Dzielenie na słowa i interpunkcję
-    const tokens = text.split(/(\s+|[.,!?;:()]+)/g).filter(t => t !== "" && t !== undefined);
+    const tokens = text.split(/(\s+|[.,!?;:()=+\-%*/]+)/g).filter(t => t !== "" && t !== undefined);
     const result = [];
 
     for (let i = 0; i < tokens.length; i++) {
         let token = tokens[i];
         let lowToken = token.toLowerCase();
 
-        // Pomiń znaki interpunkcyjne i spacje
-        if (/^[\s.,!?;:()]+$/.test(token)) {
+        if (/^[\s.,!?;:()=+\-%*/]+$/.test(token)) {
             result.push(token);
             continue;
         }
@@ -57,22 +73,17 @@ function reorderSmart(text) {
             let nextToken = tokens[nextIdx];
             let nextLow = nextToken.toLowerCase();
 
-            // LOGIKA: Rzeczownik + (Przymiotnik LUB Liczebnik) -> Zamiana
-            const isNounFirst = wordTypes[lowToken] === "noun";
-            const isAdjOrNumSecond = (wordTypes[nextLow] === "adjective" || wordTypes[nextLow] === "numeral");
+            if (wordTypes[lowToken] === "noun" && wordTypes[nextLow] === "adjective") {
+                // Zachowaj informację o wielkości liter pierwszego słowa w parze
+                const firstWordCase = getCaseType(token);
+                
+                // Przestawiamy: Przymiotnik dostaje wielkość liter Rzeczownika (jeśli był pierwszy)
+                let newFirst = fixCase(nextToken, firstWordCase);
+                let newSecond = fixCase(token, "lower"); // Rzeczownik ląduje w środku, więc małą literą
 
-            if (isNounFirst && isAdjOrNumSecond) {
-                const firstCase = getCase(token); // Pobierz wielkość liter z "Język"
-                
-                // Zamiana: Przymiotnik/Liczebnik idzie na przód i dostaje wielkość liter pierwszego słowa
-                result.push(applyCase(nextToken, firstCase));
-                
-                // Dodaj spacje/znaki pomiędzy
+                result.push(newFirst);
                 for (let j = i + 1; j < nextIdx; j++) result.push(tokens[j]);
-                
-                // Rzeczownik idzie na drugie miejsce i staje się mały (chyba że był cały w Caps)
-                result.push(firstCase === "upper" ? token.toUpperCase() : token.toLowerCase());
-                
+                result.push(newSecond);
                 i = nextIdx;
                 continue;
             }
@@ -82,6 +93,7 @@ function reorderSmart(text) {
     return result.join("");
 }
 
+// --- RESZTA LOGIKI ---
 async function translate() {
     const input = document.getElementById('userInput');
     const out = document.getElementById('resultOutput');
@@ -98,14 +110,20 @@ async function translate() {
         } else if (src === 'slo' && tgt === 'pl') {
             finalResult = dictReplace(input.value, sloToPl);
         } else {
-            // Google Translate dla innych par
-            const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${src}&tl=${tgt}&dt=t&q=${encodeURIComponent(input.value)}`;
-            const res = await fetch(url);
-            const data = await res.json();
-            finalResult = data[0].map(x => x[0]).join('');
+            // Logika Google Translate dla reszty
+            finalResult = await google(input.value, src, tgt);
         }
         out.innerText = finalResult;
     } catch (e) { out.innerText = "Error..."; }
+}
+
+async function google(text, s, t) {
+    try {
+        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${s}&tl=${t}&dt=t&q=${encodeURIComponent(text)}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        return data[0].map(x => x[0]).join('');
+    } catch (e) { return text; }
 }
 
 async function loadDictionaries() {
@@ -122,19 +140,17 @@ async function loadDictionaries() {
                         const slo = item.slovian.toLowerCase().trim();
                         plToSlo[pl] = item.slovian.trim();
                         sloToPl[slo] = item.polish.trim();
-
                         if (item["type and case"]) {
                             const info = item["type and case"].toLowerCase();
                             if (info.includes("jimenьnik") || info.includes("noun")) wordTypes[slo] = "noun";
                             if (info.includes("priloga") || info.includes("adjective")) wordTypes[slo] = "adjective";
-                            if (info.includes("ličьnik") || info.includes("numeral")) wordTypes[slo] = "numeral";
                         }
                     }
                 });
             }
         }
-        if (status) status.innerText = "Silnik gotowy.";
-    } catch (e) { if (status) status.innerText = "Błąd."; }
+        if (status) status.innerText = "Engine Ready.";
+    } catch (e) { if (status) status.innerText = "Error."; }
 }
 
 function debounce(func, wait) {
@@ -145,6 +161,7 @@ function debounce(func, wait) {
     };
 }
 
+// Inicjalizacja UI (uproszczona dla czytelności)
 async function init() {
     await loadDictionaries();
     document.getElementById('userInput').addEventListener('input', debounce(translate, 300));
