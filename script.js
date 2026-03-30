@@ -1,6 +1,5 @@
 let plToSlo = {}, sloToPl = {};
 let wordTypes = {};
-
 const languageData = [
     { code: 'slo', slo: 'Slověnьsky', pl: 'Słowiański', en: 'Slovian (Slavic)', de: 'Slawisch', cs: 'Slovanský', sk: 'Slovanský', ru: 'Славянский', fr: 'Slave', es: 'Eslavo', it: 'Slavo', uk: 'Слов\'янська', be: 'Славянская', bg: 'Славянски', hr: 'Slavenski', sr: 'Словенски', sl: 'Slovanski', mk: 'Словенски', pt: 'Eslavo', nl: 'Slavisch', da: 'Slavisk', sv: 'Slaviska', no: 'Slavisk', fi: 'Slaavilainen', et: 'Slaavi', lv: 'Slāvu', lt: 'Slavų', el: 'Σλαβική', tr: 'Slavca', hu: 'Szláv', ro: 'Slavă', ja: 'スラヴ語', ko: '슬라브어', "zh-CN": '斯拉夫语', "zh-TW": '斯拉夫語', ar: 'السلافية', hi: 'स्लाविक', id: 'Slavia', vi: 'Tiếng Slav', th: 'ภาษาสลาวิก', he: 'סלאבית', az: 'Slavyan', ka: 'სლავური', hy: 'Սլավոնական', af: 'Slawies', sq: 'Sllave', am: 'ስላቪክ', bn: 'স্লাভিক', ms: 'Slavik', zu: 'IsiSlavic' },
     { code: 'en', pl: 'Angielski', en: 'English', slo: "Angol'ьsky", de: 'Englisch' },
@@ -52,14 +51,13 @@ const languageData = [
     { code: 'tr', pl: 'Turecki', en: 'Turkish', slo: 'Turečьsky', de: 'Türkisch' },
     { code: 'vi', pl: 'Wietnamski', en: 'Vietnamese', slo: 'Větnamьsky', de: 'Vietnamesisch' }
 ];
-
 const uiTranslations = {
     slo: { title: "Slovo Perkladačь", from: "Jiz ęzyka:", to: "Na ęzyk:", paste: "Vyloži", clear: "Terbi", copy: "Poveli", placeholder: "Piši tu..." },
     pl: { title: "Slovo Tłumacz", from: "Z języka:", to: "Na język:", paste: "Wklej", clear: "Usuń", copy: "Kopiuj", placeholder: "Wpisz tekst..." },
     en: { title: "Slovo Translator", from: "From language:", to: "To language:", paste: "Paste", clear: "Clear", copy: "Copy", placeholder: "Type here..." },
     de: { title: "Slovo Übersetzer", from: "Von:", to: "Nach:", paste: "Einfügen", clear: "Löschen", copy: "Kopieren", placeholder: "Text eingeben..." },
     fr: { title: "Traducteur Slovo", from: "De :", to: "Vers :", paste: "Coller", clear: "Effacer", copy: "Copier", placeholder: "Entrez le texte..." },
-    es: { title: "Traductor Slovo", from: "De:", to: "A:", paste: "Pegar", clear: "Borrar", copy: "Copiar", placeholder: "Escribe texto..." },
+    es: { title: "Traductor Slovo", from: "De:", to: "A:", paste: "Pegar", clear: "Borrar", copy: "Copier", placeholder: "Escribe texto..." },
     it: { title: "Traduttore Slovo", from: "Da:", to: "A:", paste: "Incolla", clear: "Cancella", copy: "Copia", placeholder: "Inserisci testo..." },
     pt: { title: "Tradutor Slovo", from: "De:", to: "Para:", paste: "Colar", clear: "Limpar", copy: "Copiar", placeholder: "Digite o texto..." },
     nl: { title: "Slovo Vertaler", from: "Van:", to: "Naar:", paste: "Plakken", clear: "Wissen", copy: "Kopiëren", placeholder: "Voer tekst in..." },
@@ -85,15 +83,44 @@ const uiTranslations = {
     ar: { title: "مترجم Slovo", from: "من:", to: "إلى:", paste: "لصق", clear: "مسح", copy: "نسخ", placeholder: "أدخل النص..." }
 };
 
-// --- FUNKCJE WIELKOŚCI LITER ---
+// --- POPRAWIONA FUNKCJA GENERUJĄCA LISTĘ JĘZYKÓW ---
+function populateLanguageLists(uiLang, userLocale) {
+    const s1 = document.getElementById('srcLang'), s2 = document.getElementById('tgtLang');
+    if (!s1 || !s2) return;
+    let dn;
+    try {
+        dn = new Intl.DisplayNames([userLocale], { type: 'language' });
+    } catch (e) {}
+    [s1, s2].forEach(s => {
+        s.options.length = 0;
+        languageData.forEach(l => {
+            let name = "";
+            if (l.code === 'slo') {
+                name = l[uiLang] || l.en || l.slo;
+            } else {
+                if (dn) {
+                    try {
+                        name = dn.of(l.code);
+                    } catch (e) {
+                        name = l[uiLang] || l.en || l.code;
+                    }
+                } else {
+                    name = l[uiLang] || l.en || l.code;
+                }
+            }
+            name = name.charAt(0).toUpperCase() + name.slice(1);
+            s.add(new Option(name, l.code));
+        });
+    });
+}
 
+// --- FUNKCJE WIELKOŚCI LITER ---
 function getCase(word) {
     if (!word) return "lower";
     if (word === word.toUpperCase() && word.length > 1) return "upper";
     if (word[0] === word[0].toUpperCase()) return "title";
     return "lower";
 }
-
 function applyCase(word, caseType) {
     if (!word) return "";
     switch (caseType) {
@@ -104,17 +131,14 @@ function applyCase(word, caseType) {
 }
 
 // --- LOGIKA TŁUMACZENIA ---
-
 function dictReplace(text, dict) {
     if (!text) return "";
     const urlRegex = /(https?:\/\/[^\s]+|[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g;
-    
     let placeholders = [];
     let tempText = text.replace(urlRegex, (match) => {
         placeholders.push(match);
         return `__URL_PH_${placeholders.length - 1}__`;
     });
-
     tempText = tempText.replace(/[a-ząćęłńóśźżěьъ']+/gi, (word) => {
         const lowWord = word.toLowerCase();
         if (dict[lowWord]) {
@@ -122,7 +146,6 @@ function dictReplace(text, dict) {
         }
         return word;
     });
-
     return tempText.replace(/__URL_PH_(\d+)__/g, (match, id) => placeholders[id]);
 }
 
@@ -130,78 +153,52 @@ function reorderSmart(text) {
     if (!text) return "";
     const tokens = text.split(/(\s+|[.,!?;:()=+\-%*/]+)/g).filter(t => t !== "" && t !== undefined);
     const result = [];
-
     for (let i = 0; i < tokens.length; i++) {
         let token = tokens[i];
         let lowToken = token.toLowerCase();
-
-        // Jeśli to znak interpunkcyjny lub spacja, dodaj i idź dalej
         if (/^[\s.,!?;:()=+\-%*/]+$/.test(token)) {
             result.push(token);
             continue;
         }
-
-        // --- SZUKANIE KOLEJNYCH SŁÓW (ignorując spacje) ---
         let nextIdx = i + 1;
         while (nextIdx < tokens.length && /^[\s]+$/.test(tokens[nextIdx])) nextIdx++;
-        
         let thirdIdx = nextIdx + 1;
         while (thirdIdx < tokens.length && /^[\s]+$/.test(tokens[thirdIdx])) thirdIdx++;
-
-        // --- OPCJA A: TRZY SŁOWA (Rzeczownik + Przymiotnik + Liczebnik lub inne kombinacje) ---
-        // Jeśli mamy 3 słowa i jednym z nich jest rzeczownik, a pozostałe to przymiotnik i liczebnik
         if (thirdIdx < tokens.length) {
             let t1 = lowToken;
             let t2 = tokens[nextIdx].toLowerCase();
             let t3 = tokens[thirdIdx].toLowerCase();
-
             const words = [
                 { val: token, type: wordTypes[t1], idx: i },
                 { val: tokens[nextIdx], type: wordTypes[t2], idx: nextIdx },
                 { val: tokens[thirdIdx], type: wordTypes[t3], idx: thirdIdx }
             ];
-
             const hasNoun = words.find(w => w.type === "noun");
             const hasAdj = words.find(w => w.type === "adjective");
             const hasNum = words.find(w => w.type === "numeral");
-
             if (hasNoun && hasAdj && hasNum) {
                 const firstCase = getCase(token);
-
-                // Kolejność: 1. Liczebnik, 2. Przymiotnik, 3. Rzeczownik
                 result.push(applyCase(hasNum.val, firstCase));
-                result.push(" "); // Dodajemy spację
+                result.push(" ");
                 result.push(hasAdj.val.toLowerCase());
-                result.push(" "); // Dodajemy spację
+                result.push(" ");
                 result.push(firstCase === "upper" ? hasNoun.val.toUpperCase() : hasNoun.val.toLowerCase());
-
-                i = thirdIdx; // Przeskakujemy przetworzone słowa
+                i = thirdIdx;
                 continue;
             }
         }
-
-        // --- OPCJA B: DWA SŁOWA (Rzeczownik + Przymiotnik LUB Rzeczownik + Liczebnik) ---
         if (nextIdx < tokens.length) {
             let nextToken = tokens[nextIdx];
             let nextLow = nextToken.toLowerCase();
-
             if (wordTypes[lowToken] === "noun" && (wordTypes[nextLow] === "adjective" || wordTypes[nextLow] === "numeral")) {
                 const firstCase = getCase(token);
-                
-                // Liczebnik lub Przymiotnik na przód
                 result.push(applyCase(nextToken, firstCase));
-                
-                // Spacja
                 for (let j = i + 1; j < nextIdx; j++) result.push(tokens[j]);
-                
-                // Rzeczownik na koniec
                 result.push(firstCase === "upper" ? token.toUpperCase() : token.toLowerCase());
-                
                 i = nextIdx;
                 continue;
             }
         }
-
         result.push(token);
     }
     return result.join("");
@@ -211,13 +208,10 @@ async function translate() {
     const input = document.getElementById('userInput');
     const out = document.getElementById('resultOutput');
     if (!input || !out) return;
-
     const text = input.value;
     const src = document.getElementById('srcLang').value;
     const tgt = document.getElementById('tgtLang').value;
-
     if (!text.trim()) { out.innerText = ""; return; }
-
     try {
         let finalResult = "";
         if (src === 'slo' && tgt === 'pl') {
@@ -262,7 +256,6 @@ async function loadDictionaries() {
                         const slo = item.slovian.toLowerCase().trim();
                         plToSlo[pl] = item.slovian.trim();
                         sloToPl[slo] = item.polish.trim();
-
                         if (item["type and case"]) {
                             const info = item["type and case"].toLowerCase();
                             if (info.includes("jimenьnik") || info.includes("noun")) wordTypes[slo] = "noun";
@@ -277,48 +270,35 @@ async function loadDictionaries() {
     } catch (e) { if (status) status.innerText = "Dict Error."; }
 }
 
+// --- ZMODYFIKOWANA FUNKCJA INICJUJĄCA ---
 async function init() {
-    const sysLangFull = navigator.language || navigator.userLanguage;
-    const sysLang = sysLangFull.split('-')[0];
+    const sysLocale = navigator.language || 'en';
+    const sysLang = sysLocale.split('-')[0];
     const uiKey = uiTranslations[sysLang] ? sysLang : 'en';
-    
     applyUI(uiKey);
-    populateLanguageLists(uiKey, sysLangFull);
-
-    // Sprawdzamy, czy język urządzenia znajduje się na naszej liście dozwolonych języków źródłowych
-    const isValidLang = languageData.some(l => l.code === sysLang);
-    const defaultSrc = isValidLang ? sysLang : 'en';
-
-    // Pobieramy z localStorage albo ustawiamy default
-    const savedSrc = localStorage.getItem('srcLang') || defaultSrc;
+    populateLanguageLists(uiKey, sysLocale);
+    const savedSrc = localStorage.getItem('srcLang') || (languageData.some(l => l.code === sysLang) ? sysLang : 'pl');
     const savedTgt = localStorage.getItem('tgtLang') || 'slo';
-
     const srcSelect = document.getElementById('srcLang');
     const tgtSelect = document.getElementById('tgtLang');
-
     if (srcSelect) {
         srcSelect.value = savedSrc;
-        // Zapisywanie do localStorage i tłumaczenie po zmianie
         srcSelect.addEventListener('change', (e) => {
             localStorage.setItem('srcLang', e.target.value);
             translate();
         });
     }
-    
     if (tgtSelect) {
         tgtSelect.value = savedTgt;
-        // Zapisywanie do localStorage i tłumaczenie po zmianie
         tgtSelect.addEventListener('change', (e) => {
             localStorage.setItem('tgtLang', e.target.value);
             translate();
         });
     }
-
     await loadDictionaries();
-    
     const userInput = document.getElementById('userInput');
     if (userInput) {
-        userInput.addEventListener('input', debounce(() => translate(), 300));
+        userInput.addEventListener('input', debounce(translate, 300));
     }
 }
 
@@ -333,58 +313,12 @@ function applyUI(lang) {
     if (input) input.placeholder = ui.placeholder;
 }
 
-function populateLanguageLists(uiLang, userLocale) {
-    const srcSelect = document.getElementById('srcLang');
-    const tgtSelect = document.getElementById('tgtLang');
-    if (!srcSelect || !tgtSelect) return;
-    
-    srcSelect.options.length = 0; 
-    tgtSelect.options.length = 0;
-
-    // Próba wczytania systemowego tłumacza nazw (nowoczesne API)
-    let displayNames;
-    try {
-        displayNames = new Intl.DisplayNames([userLocale], { type: 'language' });
-    } catch (e) {
-        // Ignorujemy błąd, aplikacja ma "plan B" poniżej
-    }
-
-    languageData.forEach(lang => {
-        let name = "";
-        
-        // Zawsze chronimy niestandardowy język słowiański
-        if (lang.code === 'slo') {
-            name = lang.slo || "Slověnьsky"; 
-        } 
-        // Jeśli przeglądarka obsługuje automatyczne nazwy języków
-        else if (displayNames) {
-            try {
-                let translatedName = displayNames.of(lang.code);
-                name = translatedName.charAt(0).toUpperCase() + translatedName.slice(1); // Zawsze z wielkiej litery
-            } catch (e) {
-                // Jeśli kod języka z jakiegoś powodu wyrzuci błąd w API, bierzemy z naszej bazy
-                name = lang[uiLang] || lang.en || lang.code; 
-            }
-        } 
-        // W starszych przeglądarkach korzystamy z ręcznie wpisanych nazw (fallback)
-        else {
-            name = lang[uiLang] || lang.en || lang.code;
-        }
-
-        srcSelect.add(new Option(name, lang.code));
-        tgtSelect.add(new Option(name, lang.code));
-    });
-}
-
 function swapLanguages() {
     const src = document.getElementById('srcLang');
     const tgt = document.getElementById('tgtLang');
     [src.value, tgt.value] = [tgt.value, src.value];
-    
-    // Zapamiętywanie nowych wartości w Local Storage po zamianie miejscami
     localStorage.setItem('srcLang', src.value);
     localStorage.setItem('tgtLang', tgt.value);
-    
     translate();
 }
 
