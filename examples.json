@@ -1,12 +1,12 @@
 [
   {
-    "context": "my mother is at home",
-    "polish": "moja matka jest w domu",
-    "slovian": "moja mati estь vu domě"
+    "context": "My mother is at home.",
+    "polish": "Moja matka jest w domu.",
+    "slovian": "Moja mati estь vu domě."
   },
   {
-    "context": "how much does this bread cost",
-    "polish": "ile kosztuje ten chleb",
-    "slovian": "koliko stojitь toji hlěb"
+    "context": "How much does this bread cost?",
+    "polish": "Ile kosztuje ten chleb?",
+    "slovian": "Koliko stojitь toji hlěb?"
   }
 ]
