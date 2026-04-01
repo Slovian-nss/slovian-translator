@@ -20,15 +20,15 @@ def save_dict(data, filename='osnova.json'):
         json.dump(sorted_data, f, ensure_ascii=False, indent=2)
     print(f"Learned: {len(sorted_data)} entries")
 
-def learn_from_examples(examples_file='examples.json'):
-    if not os.path.exists(examples_file):
-        print("No examples.json")
+def learn_from_example_sentences(example_sentences_file='example_sentences.json'):
+    if not os.path.exists(example_sentences_file):
+        print("No example_sentences.json")
         return
-    with open(examples_file, 'r', encoding='utf-8') as f:
-        examples = json.load(f)
+    with open(example_sentences_file, 'r', encoding='utf-8') as f:
+        example_sentences = json.load(f)
     existing = load_dicts()
     new_entries = []
-    for ex in examples:
+    for ex in example_sentences:
         entry = {
             "type and case": ex.get("type", "phrase - rěčenьje"),
             "context": ex.get("context", ""),
@@ -42,4 +42,4 @@ def learn_from_examples(examples_file='examples.json'):
     save_dict(all_data)
 
 if __name__ == "__main__":
-    learn_from_examples()
+    learn_from_example_sentences()
