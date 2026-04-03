@@ -1,6 +1,10 @@
 import json
 import os
-from collections import defaultdict, Counter
+from collections import defaultdict
+
+# ========================
+# 📂 IO
+# ========================
 
 def load_data(file):
     if os.path.exists(file):
@@ -8,12 +12,25 @@ def load_data(file):
             return json.load(f)
     return []
 
-def save_data(data, file):
-    with open(file, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+# ========================
+# 🔤 LEVENSHTEIN
+# ========================
+
+def levenshtein(a, b):
+    dp = [[i + j if i * j == 0 else 0 for j in range(len(b) + 1)] for i in range(len(a) + 1)]
+
+    for i in range(1, len(a) + 1):
+        for j in range(1, len(b) + 1):
+            cost = 0 if a[i-1] == b[j-1] else 1
+            dp[i][j] = min(
+                dp[i-1][j] + 1,
+                dp[i][j-1] + 1,
+                dp[i-1][j-1] + cost
+            )
+    return dp[-1][-1]
 
 # ========================
-# 🔍 ANALIZA vuzor.json
+# 🧠 TAGI
 # ========================
 
 def detect_case(tag):
@@ -24,7 +41,6 @@ def detect_case(tag):
     if "locative" in tag: return "loc"
     if "dative" in tag: return "dat"
     if "instrumental" in tag: return "ins"
-    if "vocative" in tag: return "voc"
     return "nom"
 
 def detect_number(tag):
@@ -34,6 +50,10 @@ def extract_lemma(tag, fallback):
     if '"' in tag:
         return tag.split('"')[1]
     return fallback
+
+# ========================
+# 🧱 RDZEŃ
+# ========================
 
 def longest_common_prefix(words):
     if not words:
@@ -47,95 +67,199 @@ def longest_common_prefix(words):
     return prefix
 
 # ========================
-# 🧠 UCZENIE WZORCÓW
+# 🧠 KLASY
+# ========================
+
+def classify_lemma(word):
+    if word.endswith("a"):
+        return "fem"
+    if word.endswith(("o", "e")):
+        return "neut"
+    return "masc"
+
+# ========================
+# 🧠 MODELE
 # ========================
 
 def build_models():
-    vuzor = load_data("vuzor.json")
-
+    data = load_data("vuzor.json")
     lemmas = defaultdict(list)
 
-    for e in vuzor:
+    for e in data:
         slov = e.get("slovian", "")
-        pol = e.get("polish", "").lower()
         tag = e.get("type and case", "")
 
-        if not slov or not pol:
+        if not slov:
             continue
 
         lemma = extract_lemma(tag, slov)
 
         lemmas[lemma].append({
-            "slov": slov,
-            "pol": pol,
+            "form": slov,
             "case": detect_case(tag),
             "num": detect_number(tag)
         })
 
-    grammar = {}
-    polish_map = defaultdict(list)
+    models = []
 
     for lemma, forms in lemmas.items():
-        slov_forms = [f["slov"] for f in forms]
-        stem = longest_common_prefix(slov_forms)
+        base_forms = [f["form"] for f in forms]
+        stem = longest_common_prefix(base_forms)
 
-        g = {}
-
+        endings = {}
         for f in forms:
             key = f"{f['num']}_{f['case']}"
-            suffix = f["slov"][len(stem):]
-            g[key] = suffix
+            endings[key] = f["form"][len(stem):]
 
-            # 🔥 uczymy się mapowania PL → przypadek
-            polish_map[f["pol"]].append(key)
-
-        grammar[lemma] = {
+        models.append({
+            "lemma": lemma,
             "stem": stem,
-            "endings": g
-        }
+            "endings": endings,
+            "class": classify_lemma(lemma)
+        })
 
-    # 🔥 rozstrzygamy konflikty PL → przypadek
-    polish_case_map = {}
-    for pol_form, keys in polish_map.items():
-        most_common = Counter(keys).most_common(1)[0][0]
-        polish_case_map[pol_form] = most_common
-
-    return grammar, polish_case_map
+    return models
 
 # ========================
-# 🔁 TŁUMACZENIE
+# 🧠 WYBÓR MODELU
 # ========================
 
-def translate(polish_word):
-    grammar, polish_case_map = build_models()
+def find_model(word, models):
+    best = None
+    best_score = float("inf")
 
-    # 1. znajdź przypadek dokładnie z danych
-    case_key = polish_case_map.get(polish_word)
+    wclass = classify_lemma(word)
 
-    # 2. jeśli nie ma — spróbuj dopasować końcówkę NA PODSTAWIE DANYCH
-    if not case_key:
-        for pol_form, key in polish_case_map.items():
-            if polish_word.endswith(pol_form[-3:]):
-                case_key = key
-                break
+    for m in models:
+        score = levenshtein(word, m["lemma"])
+        if m["class"] != wclass:
+            score += 2
 
-    if not case_key:
-        return polish_word  # brak danych → nie zgadujemy
+        if score < best_score:
+            best_score = score
+            best = m
 
-    # 3. znajdź lemma po podobieństwie (rdzeń PL)
-    for lemma, data in grammar.items():
-        stem = data["stem"]
-        endings = data["endings"]
-
-        if case_key in endings:
-            # 🔥 tu NIE zgadujemy — bierzemy dokładny wzorzec
-            return stem + endings[case_key]
-
-    return polish_word
+    return best
 
 # ========================
-# 🚀 TEST
+# 🧠 POS TAGGING (heurystyka)
+# ========================
+
+def guess_pos(word):
+    if word.endswith(("ć", "ł", "ła", "li")):
+        return "verb"
+    if word in ["w", "do", "z", "na", "o", "k", "ku"]:
+        return "prep"
+    return "noun"
+
+# ========================
+# 🧠 PARSER SKŁADNI
+# ========================
+
+def parse_sentence(tokens):
+    structure = []
+
+    verb_found = False
+
+    for i, word in enumerate(tokens):
+        pos = guess_pos(word)
+
+        if pos == "verb":
+            verb_found = True
+            structure.append((word, "verb"))
+        elif pos == "prep":
+            structure.append((word, "prep"))
+        else:
+            if not verb_found:
+                structure.append((word, "subject"))
+            else:
+                structure.append((word, "object"))
+
+    return structure
+
+# ========================
+# 🧠 PRZYPADKI
+# ========================
+
+PREPOSITIONS = {
+    "w": "loc",
+    "do": "gen",
+    "z": "ins",
+    "na": "loc",
+    "o": "loc",
+    "k": "dat"
+}
+
+def assign_case(role, prev_word):
+    if prev_word in PREPOSITIONS:
+        return PREPOSITIONS[prev_word]
+
+    if role == "subject":
+        return "nom"
+    if role == "object":
+        return "acc"
+
+    return "nom"
+
+# ========================
+# 🔁 ODMIANA
+# ========================
+
+def detect_number(word):
+    if word.endswith(("y", "i", "ów", "ami", "ach")):
+        return "pl"
+    return "sg"
+
+def strip_word(word):
+    for suf in ["ami", "ach", "ów", "a", "y", "i", "ę"]:
+        if word.endswith(suf):
+            return word[:-len(suf)]
+    return word
+
+def decline(word, case, number, models):
+    model = find_model(word, models)
+    if not model:
+        return word
+
+    key = f"{number}_{case}"
+    if key not in model["endings"]:
+        return word
+
+    base = strip_word(word)
+    return base + model["endings"][key]
+
+# ========================
+# 🚀 PIPELINE
+# ========================
+
+def process(sentence):
+    models = build_models()
+    tokens = sentence.lower().split()
+
+    parsed = parse_sentence(tokens)
+
+    result = []
+
+    for i, (word, role) in enumerate(parsed):
+        if role == "prep":
+            result.append("v" if word == "w" else word)
+            continue
+
+        prev = tokens[i-1] if i > 0 else ""
+        case = assign_case(role, prev)
+        number = detect_number(word)
+
+        result.append(decline(word, case, number, models))
+
+    return " ".join(result)
+
+# ========================
+# TESTY
 # ========================
 
 if __name__ == "__main__":
-    print(translate("grodów"))  # powinno dać: gord
+    print(process("Kobieta widzi mężczyznę"))
+    print(process("W grodzie"))
+    print(process("Do grodów"))
+    print(process("Programista widzi kobietę"))
+    print(process("Na komputerach"))
