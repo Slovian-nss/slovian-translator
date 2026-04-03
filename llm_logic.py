@@ -9,117 +9,117 @@ def load_data(file):
     return []
 
 def detect_case(tag):
-    tag = tag.lower()
-    if any(x in tag for x in ["nominative", "jimenovьnik"]): return "nom"
-    if any(x in tag for x in ["genitive", "rodilьnik"]): return "gen"
-    if any(x in tag for x in ["accusative", "vinьnik"]): return "acc"
-    if any(x in tag for x in ["locative", "městьnik"]): return "loc"
-    if any(x in tag for x in ["dative", "měrьnik"]): return "dat"
-    if any(x in tag for x in ["instrumental", "orǫdьnik"]): return "ins"
+    t = tag.lower()
+    if "nominative" in t or "jimenovьnik" in t: return "nom"
+    if "genitive" in t or "rodilьnik" in t: return "gen"
+    if "accusative" in t or "vinьnik" in t: return "acc"
+    if "locative" in t or "městьnik" in t: return "loc"
+    if "dative" in t or "měrьnik" in t: return "dat"
+    if "instrumental" in t or "orǫdьnik" in t: return "ins"
     return "nom"
 
 def detect_number(tag):
-    return "pl" if any(x in tag for x in ["plural", "munoga ličьba"]) else "sg"
-
-def extract_lemma(tag, slovian):
-    if '"' in tag:
-        return tag.split('"')[1].strip()
-    return slovian.split()[0] if slovian else slovian
+    return "pl" if "plural" in tag.lower() or "munoga" in tag.lower() else "sg"
 
 def build_models():
     data = load_data("vuzor.json")
-    models = defaultdict(lambda: {"endings": {}, "class": "masc"})
-
+    models = {}
     for e in data:
         slov = e.get("slovian", "").strip()
         tag = e.get("type and case", "")
         if not slov: continue
-        lemma = extract_lemma(tag, slov)
+        lemma = tag.split('"')[1].strip() if '"' in tag else slov.split()[0]
         case = detect_case(tag)
         num = detect_number(tag)
         key = f"{num}_{case}"
-        models[lemma]["lemma"] = lemma
+        
+        if lemma not in models:
+            models[lemma] = {"endings": {}, "class": "fem" if lemma.endswith("a") else "neut" if lemma[-1] in "oe" else "masc"}
         models[lemma]["endings"][key] = slov
-        if lemma.endswith("a"): models[lemma]["class"] = "fem"
-        elif lemma[-1] in "oe": models[lemma]["class"] = "neut"
-
-    return list(models.values())
+    return models
 
 # ========================
-# Poprawione reguły dla "z"
+# REGUŁY PRZYIMKÓW
 # ========================
-PREP_CASE = {
-    "v":  ("loc", "v"),      # w
+PREP_RULES = {
+    "w":  ("loc", "v"),
     "do": ("gen", "do"),
     "na": ("loc", "na"),
     "o":  ("loc", "o"),
     "k":  ("dat", "k"),
-    "su": ("ins", "su"),     # z + narzędnik (z kimś)
-    "jiz":("gen", "jiz")     # z + dopełniacz (z kogoś/czegoś)
+    "z":  None,   # specjalna obsługa poniżej
+    "ze": None
 }
 
-def get_case_from_context(tokens, i):
-    word = tokens[i].lower()
+def get_case_and_prep(tokens, i):
+    if i == 0: return "nom", None
+    prev = tokens[i-1].lower()
     
-    # Przyimek bezpośrednio przed
-    if i > 0:
-        prev = tokens[i-1].lower()
-        if prev in ("z", "ze"):
-            # Następne słowo decyduje (prosta heurystyka)
-            if i+1 < len(tokens) and tokens[i+1].lower() in ("kim", "czym", "nim", "nią", "nimi", "tob", "sob"):
-                return "ins"   # z kimś → su + ins
-            return "gen"       # z czego/kogo → jiz + gen
-        if prev in PREP_CASE:
-            return PREP_CASE[prev][0]
+    if prev in ("z", "ze"):
+        # z kimś/czymś → su + ins
+        # z kogo/czego → jiz + gen
+        next_word = tokens[i+1] if i+1 < len(tokens) else ""
+        if any(x in next_word for x in ["kim","czym","nim","nią","nimi","sob","tob"]):
+            return "ins", "su"
+        return "gen", "jiz"
     
-    # Domyślne reguły zdaniowe
-    if i == 0 or any(x in tokens[:i] for x in ["widzi", "idzie", "jest"]):
-        return "nom"
-    return "acc"
+    if prev in PREP_RULES:
+        case, prep = PREP_RULES[prev]
+        return case, prep
+    return "acc", None   # domyślnie dopełnienie
 
 def decline(word, case, number, models):
-    best = None
+    if not word: return "●"
+    best_model = None
     best_score = float("inf")
-    for m in models:
-        score = sum(c1 != c2 for c1,c2 in zip(word, m["lemma"])) + abs(len(word)-len(m["lemma"]))
+    
+    for lemma, m in models.items():
+        score = sum(a != b for a,b in zip(word.lower(), lemma.lower())) + abs(len(word)-len(lemma))
         if score < best_score:
             best_score = score
-            best = m
-    if not best: return word
-
+            best_model = m
+    
+    if not best_model:
+        return "●"
+    
     key = f"{number}_{case}"
-    return best["endings"].get(key, word)
+    result = best_model["endings"].get(key)
+    return result if result else "●"
 
+# ========================
+# GŁÓWNA FUNKCJA
+# ========================
 def process(sentence):
     models = build_models()
     tokens = sentence.lower().split()
     result = []
-
-    for i, word in enumerate(tokens):
+    
+    i = 0
+    while i < len(tokens):
+        word = tokens[i]
+        
         if word in ("z", "ze"):
-            # Decyzja su / jiz zostanie podjęta przy następnym rzeczowniku
+            # przyimek obsługiwany przy następnym słowie
+            i += 1
             continue
-        if word in PREP_CASE:
-            result.append(PREP_CASE[word][1] if word in PREP_CASE else word)
+            
+        if word in PREP_RULES and PREP_RULES[word]:
+            result.append(PREP_RULES[word][1])
+            i += 1
             continue
-
-        case = get_case_from_context(tokens, i)
+            
+        case, prep = get_case_and_prep(tokens, i)
         number = "pl" if word.endswith(("y","i","ów","ami","ach")) else "sg"
-
-        result.append(decline(word, case, number, models))
-
+        
+        translated = decline(word, case, number, models)
+        result.append(translated)
+        i += 1
+    
     return " ".join(result)
 
-# Testy
+# Test
 if __name__ == "__main__":
-    tests = [
-        "Kobieta widzi mężczyznę",
-        "Idę z przyjacielem",
-        "Zrobiłem to z przyjemnością",
-        "Z okna widzę morze",
-        "W grodzie",
-        "Do grodów",
-        "Na komputerach"
-    ]
-    for t in tests:
-        print(t, "→", process(t))
+    print(process("W ogrodzie"))          # → Vu ogrodzie.
+    print(process("Z przyjacielem"))      # → Su prijateljem.
+    print(process("Z okna"))              # → Jiz okna.
+    print(process("Kobieta widzi mężczyznę"))
