@@ -9,7 +9,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     
-    # KLUCZOWA POPRAWKA: Nadanie uprawnień do zapisu
+    # TO JEST KLUCZ: Daje botowi prawo do robienia 'git push'
     permissions:
       contents: write
 
@@ -24,12 +24,6 @@ jobs:
         with:
           python-version: '3.9'
 
-      - name: Install dependencies
-        run: |
-          if [ -f requirements.txt ]; then
-            pip install -r requirements.txt
-          fi
-
       - name: Run Learning Script
         run: python app.py
 
@@ -40,13 +34,11 @@ jobs:
           git config --global user.name 'SlovianBot'
           git config --global user.email 'bot@slovian.org'
           
-          # Dodajemy zmiany, jeśli plik osnova.json istnieje
           if [ -f osnova.json ]; then
             git add osnova.json
             git commit -m "Auto-clean dictionary: $(date +'%Y-%m-%d %H:%M')" || exit 0
-            # Bezpieczny push z tokenem
             git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git HEAD:${{ github.ref_name }}
           else
-            echo "Nie znaleziono pliku osnova.json - sprawdź czy app.py go tworzy."
+            echo "Błąd: Nie znaleziono pliku osnova.json"
             exit 1
           fi
