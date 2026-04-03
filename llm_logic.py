@@ -1,6 +1,5 @@
 import json
 import os
-from collections import defaultdict
 
 def load_data(file):
     if os.path.exists(file):
@@ -37,7 +36,7 @@ def build_models():
         models[lemma]["endings"][key] = slov
     return models
 
-# Przyimki
+# Proste reguły przyimków
 PREP_RULES = {
     "w":  ("loc", "v"),
     "do": ("gen", "do"),
@@ -47,43 +46,19 @@ PREP_RULES = {
     "u":  ("gen", "u"),
 }
 
-# Zaimki osobowe + dzierżawcze
-PRONOUNS = {
-    # Osobowe
-    "ja":     {"nom": "ja", "gen": "mne", "dat": "mne", "acc": "mne", "ins": "mnoju", "loc": "mne"},
-    "ty":     {"nom": "ty", "gen": "tebe", "dat": "tebe", "acc": "tebe", "ins": "toboju", "loc": "tebe"},
-    "on":     {"nom": "on", "gen": "jego", "dat": "jemu", "acc": "jego", "ins": "imь", "loc": "nemь"},
-    "ona":    {"nom": "ona", "gen": "jeje", "dat": "jej", "acc": "jeje", "ins": "eju", "loc": "nej"},
-    "my":     {"nom": "my", "gen": "nas", "dat": "nam", "acc": "nas", "ins": "nami", "loc": "nas"},
-    "wy":     {"nom": "vy", "gen": "vas", "dat": "vam", "acc": "vas", "ins": "vami", "loc": "vas"},
-
-    # Dzierżawcze
-    "mój":    {"nom": "moj", "gen": "mojego", "dat": "mojemu", "acc": "mojego", "ins": "mojimь", "loc": "mojemь"},
-    "moja":   {"nom": "moja", "gen": "mojeji", "dat": "mojeji", "acc": "mojǫ", "ins": "mojejǫ", "loc": "mojeji"},
-    "moje":   {"nom": "moje", "gen": "mojego", "dat": "mojemu", "acc": "moje", "ins": "mojimь", "loc": "mojemь"},
-
-    "twój":   {"nom": "tvoj", "gen": "tvojego", "dat": "tvojemu", "acc": "tvojego", "ins": "tvojimь", "loc": "tvojemь"},
-    "twoja":  {"nom": "twoja", "gen": "tvojeji", "dat": "tvojeji", "acc": "tvojǫ", "ins": "tvojejǫ", "loc": "tvojeji"},
-    "twoje":  {"nom": "twoje", "gen": "tvojego", "dat": "tvojemu", "acc": "twoje", "ins": "tvojimь", "loc": "tvojemь"},
-
-    "nasz":   {"nom": "naš", "gen": "našego", "dat": "našemu", "acc": "našego", "ins": "našimь", "loc": "našemь"},
-    "nasza":  {"nom": "naša", "gen": "našeji", "dat": "našeji", "acc": "našǫ", "ins": "našejǫ", "loc": "našeji"},
-    "nasze":  {"nom": "naše", "gen": "našego", "dat": "našemu", "acc": "naše", "ins": "našimь", "loc": "našemь"},
-
-    "wasz":   {"nom": "vaš", "gen": "vašego", "dat": "vašemu", "acc": "vašego", "ins": "vašimь", "loc": "vašemь"},
-    "wasza":  {"nom": "vaša", "gen": "vašeji", "dat": "vašeji", "acc": "vašǫ", "ins": "vašejǫ", "loc": "vašeji"},
-    "wasze":  {"nom": "vaše", "gen": "vašego", "dat": "vašemu", "acc": "vaše", "ins": "vašimь", "loc": "vašemь"},
-}
-
 def get_case_and_prep(tokens, i):
     if i == 0:
         return "nom", None
+    
     prev = tokens[i-1].lower()
     current = tokens[i].lower()
 
+    # Specjalna obsługa "z / ze"
     if prev in ("z", "ze"):
+        # Jeśli końcówka wygląda na narzędnik → su + ins
         if current.endswith(("em", "ą", "im", "ami", "mi")):
             return "ins", "su"
+        # W przeciwnym razie → jiz + gen
         return "gen", "jiz"
 
     if prev in PREP_RULES:
@@ -97,12 +72,7 @@ def decline(word, case, number, models):
 
     w = word.lower()
 
-    # Zaimki (osobowe + dzierżawcze)
-    if w in PRONOUNS:
-        form = PRONOUNS[w].get(case, word)
-        return form if form else "●"
-
-    # Rzeczowniki / przymiotniki z vuzor.json
+    # Najprostsze dopasowanie lematu
     best_model = None
     best_score = float("inf")
     for lemma, m in models.items():
@@ -133,7 +103,7 @@ def process(sentence):
             i += 1
             continue
             
-        case, _ = get_case_and_prep(tokens, i)
+        case, prep = get_case_and_prep(tokens, i)
         number = "pl" if word.endswith(("y","i","ów","ami","ach")) else "sg"
         
         translated = decline(word, case, number, models)
@@ -141,11 +111,10 @@ def process(sentence):
         i += 1
     return " ".join(result)
 
-# Testy
+# Test
 if __name__ == "__main__":
-    print(process("To jest mój dom"))
-    print(process("Z moim ogrodem"))
-    print(process("Twoja siostra"))
-    print(process("Nasze miasto"))
-    print(process("Z twoją książką"))
-    print(process("W naszym ogrodzie"))
+    print(process("Z grodem"))
+    print(process("Z ogrodem"))
+    print(process("Z okna"))
+    print(process("W ogrodzie"))
+    print(process("Z przyjacielem"))
