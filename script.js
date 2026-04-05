@@ -1,5 +1,6 @@
 let plToSlo = {}, sloToPl = {};
 let wordTypes = {};
+let declensionMap = {};   // mapa form z vuzor.json
 
 const languageData = [
     { code: 'slo', slo: 'Slověnьsky', pl: 'Słowiański', en: 'Slovian (Slavic)', de: 'Slawisch', cs: 'Slovanský', sk: 'Slovanský', ru: 'Славянский', fr: 'Slave', es: 'Eslavo', it: 'Slavo', uk: 'Слов\'янська', be: 'Славянская', bg: 'Славянски', hr: 'Slavenski', sr: 'Словенски', 'sr-Latn': 'Slavenski', sl: 'Slovanski', mk: 'Словенски', pt: 'Eslavo', nl: 'Slavisch', da: 'Slavisk', sv: 'Slaviska', no: 'Slavisk', fi: 'Slaavilainen', et: 'Slaavi', lv: 'Slāvu', lt: 'Slavų', el: 'Σλαβική', tr: 'Slavca', hu: 'Szláv', ro: 'Slavă', ja: 'スラヴ語', ko: '슬라브어', "zh-CN": '斯拉夫语', "zh-TW": '斯拉夫語', ar: 'السلافية', hi: 'स्लाविक', id: 'Slavia', vi: 'Tiếng Slav', th: 'ภาษาสลาวิก', he: 'סלאבית', az: 'Slavyan', ka: 'სლავური', hy: 'Սլավոնական', af: 'Slawies', sq: 'Sllave', am: 'ስላቪክ', bn: 'স্লাভিক', ms: 'Slavik', zu: 'IsiSlavic' },
@@ -205,6 +206,18 @@ function reorderSmart(text) {
     return result.join("");
 }
 
+// --- ZAWAANSOWANY PARSER ODMIAN ---
+function parseDeclension(plWord) {
+    const low = plWord.toLowerCase().trim();
+    if (declensionMap[low]) return declensionMap[low];
+    for (let base in declensionMap) {
+        if (low === base || low.startsWith(base) || base.startsWith(low)) {
+            return declensionMap[base];
+        }
+    }
+    return null;
+}
+
 async function translate() {
     const input = document.getElementById('userInput');
     const out = document.getElementById('resultOutput');
@@ -215,11 +228,16 @@ async function translate() {
     if (!text.trim()) { out.innerText = ""; return; }
     try {
         let finalResult = "";
-        if (src === 'slo' && tgt === 'pl') {
-            finalResult = dictReplace(text, sloToPl);
-        } else if (src === 'pl' && tgt === 'slo') {
-            let translated = dictReplace(text, plToSlo);
+        if (src === 'pl' && tgt === 'slo') {
+            // Zaawansowane przetwarzanie z parserem odmian
+            let translated = text.replace(/[a-ząćęłńóśźżěьъ']+/gi, (word) => {
+                const declined = parseDeclension(word);
+                if (declined) return applyCase(declined, getCase(word));
+                return dictReplace(word, plToSlo);
+            });
             finalResult = reorderSmart(translated);
+        } else if (src === 'slo' && tgt === 'pl') {
+            finalResult = dictReplace(text, sloToPl);
         } else if (src === 'slo') {
             const bridge = dictReplace(text, sloToPl);
             finalResult = await google(bridge, 'pl', tgt);
@@ -257,11 +275,18 @@ async function loadDictionaries() {
                         const slo = item.slovian.toLowerCase().trim();
                         plToSlo[pl] = item.slovian.trim();
                         sloToPl[slo] = item.polish.trim();
+
                         if (item["type and case"]) {
                             const info = item["type and case"].toLowerCase();
                             if (info.includes("jimenьnik") || info.includes("noun")) wordTypes[slo] = "noun";
                             if (info.includes("priloga") || info.includes("adjective")) wordTypes[slo] = "adjective";
                             if (info.includes("ličьnik") || info.includes("numeral")) wordTypes[slo] = "numeral";
+                        }
+
+                        // Zapisujemy formy odmian z vuzor.json
+                        if (item["type and case"] && item["type and case"].includes("jimenьnik")) {
+                            const basePl = item.polish.toLowerCase().trim().split(' ')[0];
+                            declensionMap[basePl] = item.slovian.trim();
                         }
                     }
                 });
@@ -271,7 +296,7 @@ async function loadDictionaries() {
     } catch (e) { if (status) status.innerText = "Dict Error."; }
 }
 
-// --- NOWA FUNKCJA SAMOUCZENIA ---
+// --- FUNKCJA SAMOUCZENIA ---
 function learnFromExamples() {
     fetch('example_sentences.json')
         .then(res => res.json())
@@ -281,9 +306,7 @@ function learnFromExamples() {
                     const plWords = ex.polish.toLowerCase().split(/\s+/);
                     const sloWords = ex.slovian.toLowerCase().split(/\s+/);
                     plWords.forEach((p, i) => {
-                        if (sloWords[i] && !plToSlo[p]) {
-                            plToSlo[p] = sloWords[i];
-                        }
+                        if (sloWords[i] && !plToSlo[p]) plToSlo[p] = sloWords[i];
                     });
                 }
             });
@@ -318,7 +341,7 @@ async function init() {
         });
     }
     await loadDictionaries();
-    learnFromExamples();   // samouczenie z example_sentences.json
+    learnFromExamples();
     const userInput = document.getElementById('userInput');
     if (userInput) {
         userInput.addEventListener('input', debounce(translate, 300));
