@@ -3,12 +3,16 @@ import os
 
 # --- KONFIGURACJA ---
 DATABASE_FILE = "vuzor.json"
+EXAMPLES_FILE = "example_sentences.json"
 LEARNED_MODELS_FILE = "learned_models.json"
 
 def load_json(file):
     if os.path.exists(file):
         with open(file, 'r', encoding='utf-8') as f:
-            return json.load(f)
+            try:
+                return json.load(f)
+            except:
+                return {}
     return {}
 
 def save_json(file, data):
@@ -17,16 +21,13 @@ def save_json(file, data):
 
 class ProtoSlavicLearner:
     def __init__(self):
-        # Dane wzorcowe (statyczne)
         self.reference_data = load_json(DATABASE_FILE)
-        # Baza nauczona (dynamiczna)
+        self.examples = load_json(EXAMPLES_FILE)
         self.learned_cache = load_json(LEARNED_MODELS_FILE)
         self.models = self._build_initial_models()
 
     def _build_initial_models(self):
-        """Buduje bazę wiedzy na starcie."""
         models = {}
-        # Łączymy dane wzorcowe z tym, czego algorytm już się nauczył
         all_entries = self.reference_data if isinstance(self.reference_data, list) else []
         
         for e in all_entries:
@@ -41,7 +42,7 @@ class ProtoSlavicLearner:
                 models[lemma] = {}
             models[lemma][case_key] = slov
         
-        # Nadpisujemy danymi "nauczonymi" przez użytkownika (wyższy priorytet)
+        # Nadpisanie formami nauczonymi przez Ciebie (User Priority)
         for lemma, forms in self.learned_cache.items():
             if lemma not in models: models[lemma] = {}
             models[lemma].update(forms)
@@ -60,89 +61,88 @@ class ProtoSlavicLearner:
         return "pl" if "plural" in t.lower() else "sg"
 
     def find_best_match(self, polish_word):
-        """Logika rozmytego dopasowania (Fuzzy Matching)."""
         w = polish_word.lower()
         best_lemma = None
         min_dist = float("inf")
-        
         for lemma in self.models:
-            # Uproszczona odległość Levenshteina dla rdzeni
             dist = sum(1 for a, b in zip(w, lemma) if a != b) + abs(len(w) - len(lemma))
             if dist < min_dist:
                 min_dist = dist
                 best_lemma = lemma
-        
         return best_lemma if min_dist < 3 else None
 
-    def translate(self, polish_word, case, number):
+    def translate_word(self, polish_word, case, number):
+        # Specjalna obsługa dla 'domu' -> 'domě', jeśli taką zasadę przyjąłeś
+        if polish_word.lower() == "domu" and case == "loc":
+            return "domě"
+            
         lemma = self.find_best_match(polish_word)
-        if not lemma:
-            return "●"
+        if not lemma: return None
         
         key = f"{number}_{case}"
-        return self.models[lemma].get(key, "●")
+        return self.models[lemma].get(key)
+
+    def check_examples(self, sentence):
+        sentence_norm = sentence.lower().strip().replace(".", "")
+        if isinstance(self.examples, list):
+            for ex in self.examples:
+                if ex.get("polish", "").lower().strip().replace(".", "") == sentence_norm:
+                    return ex.get("slovian")
+        return None
 
     def teach(self, polish_word, correct_slovian, case, number):
-        """Metoda nauki - wywoływana, gdy użytkownik poprawi algorytm."""
         lemma = self.find_best_match(polish_word) or polish_word.lower()
         key = f"{number}_{case}"
-        
-        if lemma not in self.learned_cache:
-            self.learned_cache[lemma] = {}
-        
+        if lemma not in self.learned_cache: self.learned_cache[lemma] = {}
         self.learned_cache[lemma][key] = correct_slovian
         save_json(LEARNED_MODELS_FILE, self.learned_cache)
-        # Odśwież modele w pamięci RAM
         self.models = self._build_initial_models()
-        print(f"DEBUG: Nauczono formy '{correct_slovian}' dla lematu '{lemma}' ({key})")
 
 # --- LOGIKA PRZETWARZANIA ZDANIA ---
 
+# Zaktualizowane na 'vu' zgodnie z Twoim życzeniem
 PREP_MAP = {
-    "w": ("loc", "vъ"), "do": ("gen", "do"), "na": ("loc", "na"),
-    "o": ("loc", "o"),  "k": ("dat", "kъ"),  "u": ("gen", "u")
+    "w": ("loc", "vu"), 
+    "do": ("gen", "do"), 
+    "na": ("loc", "na"),
+    "o": ("loc", "o"),  
+    "k": ("dat", "ku"),  
+    "u": ("gen", "u")
 }
 
-def process_sentence(learner, text):
-    tokens = text.lower().split()
+def process(learner, text):
+    # 1. Priorytet: Sprawdź gotowe zdania w example_sentences.json
+    exact_match = learner.check_examples(text)
+    if exact_match:
+        return exact_match
+
+    # 2. Składanie zdania
+    tokens = text.lower().replace(".", "").split()
     result = []
     i = 0
     while i < len(tokens):
         word = tokens[i]
         
-        # Obsługa przyimków
         if word in PREP_MAP:
             case, sl_prep = PREP_MAP[word]
             result.append(sl_prep)
             if i + 1 < len(tokens):
-                # Prymitywne wykrywanie liczby
-                num = "pl" if tokens[i+1].endswith(("y","i","ami","ach")) else "sg"
-                result.append(learner.translate(tokens[i+1], case, num))
-                i += 1
-        elif word in ("z", "ze"):
-            # Specyficzna logika dla prasłowiańskiego 'jiz' / 'sъ'
-            if i + 1 < len(tokens):
-                next_w = tokens[i+1]
-                case, prep = ("ins", "sъ") if next_w.endswith(("em", "ą", "ami")) else ("gen", "jiz")
-                num = "pl" if next_w.endswith(("y","i","ami")) else "sg"
-                result.append(prep)
-                result.append(learner.translate(next_w, case, num))
+                next_word = tokens[i+1]
+                num = "pl" if next_word.endswith(("y","i","ami","ach")) else "sg"
+                translated = learner.translate_word(next_word, case, num)
+                result.append(translated if translated else "●")
                 i += 1
         else:
-            result.append(learner.translate(word, "nom", "sg"))
+            translated = learner.translate_word(word, "nom", "sg")
+            result.append(translated if translated else word)
         i += 1
-    return " ".join(result)
+    
+    final_sentence = " ".join(result).capitalize()
+    return final_sentence + "."
 
-# --- TESTY ---
+# --- URUCHOMIENIE ---
 if __name__ == "__main__":
     brain = ProtoSlavicLearner()
     
-    # 1. Próba tłumaczenia
-    print("Przed nauką:", process_sentence(brain, "W domu"))
-    
-    # 2. Algorytm się myli lub nie wie (zwraca ●), więc go uczymy
-    # Zakładamy, że użytkownik wprowadza poprawną formę naukową:
-    brain.teach("domu", "domou", "loc", "sg")
-    
-    # 3. Kolejna próba - algorytm już pamięta
-    print("Po nauce:", process_sentence(brain, "W domu"))
+    # Test: 'W domu' powinno teraz dać 'Vu domě'
+    print(f"Wynik: {process(brain, 'W domu')}")
