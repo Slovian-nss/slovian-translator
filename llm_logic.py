@@ -1,53 +1,25 @@
 import json
 import os
+import re
 
 # --- KONFIGURACJA ---
 DATABASE_FILE = "vuzor.json"
-EXAMPLES_FILE = "example_sentences.json"
 LEARNED_MODELS_FILE = "learned_models.json"
 
 def load_json(file):
     if os.path.exists(file):
         with open(file, 'r', encoding='utf-8') as f:
             try:
-                return json.load(f)
-            except:
-                return {}
-    return {}
-
-def save_json(file, data):
-    with open(file, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
+                data = json.load(f)
+                return data if isinstance(data, list) else []
+            except: return []
+    return []
 
 class ProtoSlavicLearner:
     def __init__(self):
-        self.reference_data = load_json(DATABASE_FILE)
-        self.examples = load_json(EXAMPLES_FILE)
+        self.raw_data = load_json(DATABASE_FILE)
         self.learned_cache = load_json(LEARNED_MODELS_FILE)
-        self.models = self._build_initial_models()
-
-    def _build_initial_models(self):
-        models = {}
-        all_entries = self.reference_data if isinstance(self.reference_data, list) else []
-        
-        for e in all_entries:
-            tag = e.get("type and case", "")
-            slov = e.get("slovian", "").strip()
-            if not slov or '"' not in tag: continue
-            
-            lemma = tag.split('"')[1].strip().lower()
-            case_key = f"{self._detect_number(tag)}_{self._detect_case(tag)}"
-            
-            if lemma not in models:
-                models[lemma] = {}
-            models[lemma][case_key] = slov
-        
-        # Nadpisanie formami nauczonymi przez Ciebie (User Priority)
-        for lemma, forms in self.learned_cache.items():
-            if lemma not in models: models[lemma] = {}
-            models[lemma].update(forms)
-            
-        return models
+        self.endings_rules = self._derive_rules()
 
     def _detect_case(self, t):
         t = t.lower()
@@ -60,89 +32,87 @@ class ProtoSlavicLearner:
     def _detect_number(self, t):
         return "pl" if "plural" in t.lower() else "sg"
 
-    def find_best_match(self, polish_word):
-        w = polish_word.lower()
-        best_lemma = None
-        min_dist = float("inf")
-        for lemma in self.models:
-            dist = sum(1 for a, b in zip(w, lemma) if a != b) + abs(len(w) - len(lemma))
-            if dist < min_dist:
-                min_dist = dist
-                best_lemma = lemma
-        return best_lemma if min_dist < 3 else None
-
-    def translate_word(self, polish_word, case, number):
-        # Specjalna obsługa dla 'domu' -> 'domě', jeśli taką zasadę przyjąłeś
-        if polish_word.lower() == "domu" and case == "loc":
-            return "domě"
-            
-        lemma = self.find_best_match(polish_word)
-        if not lemma: return None
+    def _derive_rules(self):
+        """Analizuje vuzor.json, aby nauczyć się końcówek dla danych przypadków."""
+        rules = {} # Format: { "loc_sg": [listy końcówek] }
         
-        key = f"{number}_{case}"
-        return self.models[lemma].get(key)
+        for e in self.raw_data:
+            tag = e.get("type and case", "")
+            slov = e.get("slovian", "").strip().lower()
+            if not slov or '"' not in tag: continue
+            
+            lemma = tag.split('"')[1].strip().lower()
+            case_key = f"{self._detect_number(tag)}_{self._detect_case(tag)}"
+            
+            # Ekstrakcja końcówki: jeśli slovian to 'domě', a lemma to 'dom', końcówka = 'ě'
+            if slov.startswith(lemma[:-1]): # dopasowanie rdzenia (minus ostatnia litera dla bezpieczeństwa)
+                common_part = os.path.commonprefix([lemma, slov])
+                ending = slov[len(common_part):]
+                
+                if case_key not in rules: rules[case_key] = {}
+                rules[case_key][ending] = rules[case_key].get(ending, 0) + 1
+        
+        return rules
 
-    def check_examples(self, sentence):
-        sentence_norm = sentence.lower().strip().replace(".", "")
-        if isinstance(self.examples, list):
-            for ex in self.examples:
-                if ex.get("polish", "").lower().strip().replace(".", "") == sentence_norm:
-                    return ex.get("slovian")
-        return None
+    def get_best_ending(self, case_key):
+        """Zwraca najczęstszą końcówkę z bazy dla danego przypadku."""
+        if case_key in self.endings_rules:
+            # Sortuj końcówki według popularności w vuzor.json
+            return max(self.endings_rules[case_key], key=self.endings_rules[case_key].get)
+        return ""
 
-    def teach(self, polish_word, correct_slovian, case, number):
-        lemma = self.find_best_match(polish_word) or polish_word.lower()
-        key = f"{number}_{case}"
-        if lemma not in self.learned_cache: self.learned_cache[lemma] = {}
-        self.learned_cache[lemma][key] = correct_slovian
-        save_json(LEARNED_MODELS_FILE, self.learned_cache)
-        self.models = self._build_initial_models()
+    def decline(self, polish_word, case, number):
+        # 1. Sprawdź czy słowo jest bezpośrednio w bazie (vuzor lub learned)
+        case_key = f"{number}_{case}"
+        for e in self.raw_data:
+            tag = e.get("type and case", "")
+            if polish_word.lower() in tag.lower() and self._detect_case(tag) == case:
+                return e.get("slovian")
 
-# --- LOGIKA PRZETWARZANIA ZDANIA ---
+        # 2. Jeśli nie ma, stwórz na podstawie osnowy (najczęstszej końcówki z bazy)
+        ending = self.get_best_ending(case_key)
+        
+        # Prosta heurystyka: bierzemy polskie słowo, odcinamy końcówkę i dajemy prasłowiańską
+        stem = polish_word.lower()
+        if len(stem) > 3:
+            stem = re.sub(r'[aueioyąęó]$', '', stem) # Usuń polską samogłoskę końcową
+            
+        return stem + ending
 
-# Zaktualizowane na 'vu' zgodnie z Twoim życzeniem
+# --- PROCESOR ZDANIA ---
+
 PREP_MAP = {
     "w": ("loc", "vu"), 
     "do": ("gen", "do"), 
     "na": ("loc", "na"),
-    "o": ("loc", "o"),  
-    "k": ("dat", "ku"),  
-    "u": ("gen", "u")
+    "z": ("ins", "su")
 }
 
-def process(learner, text):
-    # 1. Priorytet: Sprawdź gotowe zdania w example_sentences.json
-    exact_match = learner.check_examples(text)
-    if exact_match:
-        return exact_match
-
-    # 2. Składanie zdania
+def process(text):
+    learner = ProtoSlavicLearner()
     tokens = text.lower().replace(".", "").split()
     result = []
     i = 0
+    
     while i < len(tokens):
         word = tokens[i]
-        
         if word in PREP_MAP:
             case, sl_prep = PREP_MAP[word]
             result.append(sl_prep)
             if i + 1 < len(tokens):
                 next_word = tokens[i+1]
-                num = "pl" if next_word.endswith(("y","i","ami","ach")) else "sg"
-                translated = learner.translate_word(next_word, case, num)
-                result.append(translated if translated else "●")
+                num = "sg" # domyślnie
+                result.append(learner.decline(next_word, case, num))
                 i += 1
         else:
-            translated = learner.translate_word(word, "nom", "sg")
-            result.append(translated if translated else word)
+            # Szukaj mianownika w bazie
+            res = learner.decline(word, "nom", "sg")
+            result.append(res if res else word)
         i += 1
-    
-    final_sentence = " ".join(result).capitalize()
-    return final_sentence + "."
+        
+    return " ".join(result).capitalize() + "."
 
-# --- URUCHOMIENIE ---
 if __name__ == "__main__":
-    brain = ProtoSlavicLearner()
-    
-    # Test: 'W domu' powinno teraz dać 'Vu domě'
-    print(f"Wynik: {process(brain, 'W domu')}")
+    # Przykład: Jeśli w vuzor.json 'dom' ma loc_sg 'domě', 
+    # to 'ogród' (nieobecny w bazie) też dostanie końcówkę 'ě' -> 'ogrodě'
+    print(process("W domu"))
