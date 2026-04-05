@@ -1,7 +1,5 @@
 let plToSlo = {}, sloToPl = {};
 let wordTypes = {};
-let declensionMap = {};   // mapa form z vuzor.json
-
 const languageData = [
     { code: 'slo', slo: 'Slověnьsky', pl: 'Słowiański', en: 'Slovian (Slavic)', de: 'Slawisch', cs: 'Slovanský', sk: 'Slovanský', ru: 'Славянский', fr: 'Slave', es: 'Eslavo', it: 'Slavo', uk: 'Слов\'янська', be: 'Славянская', bg: 'Славянски', hr: 'Slavenski', sr: 'Словенски', 'sr-Latn': 'Slavenski', sl: 'Slovanski', mk: 'Словенски', pt: 'Eslavo', nl: 'Slavisch', da: 'Slavisk', sv: 'Slaviska', no: 'Slavisk', fi: 'Slaavilainen', et: 'Slaavi', lv: 'Slāvu', lt: 'Slavų', el: 'Σλαβική', tr: 'Slavca', hu: 'Szláv', ro: 'Slavă', ja: 'スラヴ語', ko: '슬라브어', "zh-CN": '斯拉夫语', "zh-TW": '斯拉夫語', ar: 'السلافية', hi: 'स्लाविक', id: 'Slavia', vi: 'Tiếng Slav', th: 'ภาษาสลาวิก', he: 'סלאבית', az: 'Slavyan', ka: 'სლავური', hy: 'Սլավոնական', af: 'Slawies', sq: 'Sllave', am: 'ስላቪክ', bn: 'স্লাভিক', ms: 'Slavik', zu: 'IsiSlavic' },
     { code: 'en', pl: 'Angielski', en: 'English', slo: "Angol'ьsky", de: 'Englisch' },
@@ -21,7 +19,7 @@ const languageData = [
     { code: 'az', pl: 'Azerbejdżański', en: 'Azerbaijani', slo: "Azerbed'ěnьsky", de: 'Aserbaidschanisch' },
     { code: 'bn', pl: 'Bengalski', en: 'Bengali', slo: 'Bengalьsky', de: 'Bengalisch' },
     { code: 'be', pl: 'Białoruski', en: 'Belarusian', slo: 'Bělorusьsky', de: 'Weißrussisch' },
-    { code: 'bg', pl: 'Bułgarski', en: 'Bulgarian', slo: "Bulgar'ьsky", de: 'Bulgarisch' },
+    { code: 'bg', pl: 'Bułgarski', en: 'Bulgarian', slo: "Boulgar'ьsky", de: 'Bulgarisch' },
     { code: 'ca', pl: 'Kataloński', en: 'Catalan', slo: "Katalonьsky", de: 'Katalanisch' },
     { code: 'zh-CN', pl: 'Chiński (uproszczony)', en: 'Chinese (Simplified)', slo: 'Kitajьsky (Uproščeny)', de: 'Chinesisch (Vereinfacht)' },
     { code: 'zh-TW', pl: 'Chiński (tradycyjny)', en: 'Chinese (Traditional)', slo: 'Kitajьsky (Obyčajьny)', de: 'Chinesisch (Traditionell)' },
@@ -53,7 +51,6 @@ const languageData = [
     { code: 'tr', pl: 'Turecki', en: 'Turkish', slo: 'Turečьsky', de: 'Türkisch' },
     { code: 'vi', pl: 'Wietnamski', en: 'Vietnamese', slo: 'Větnamьsky', de: 'Vietnamesisch' }
 ];
-
 const uiTranslations = {
     slo: { title: "Slovo Perkladačь", from: "Jiz ęzyka:", to: "Na ęzyk:", paste: "Vyloži", clear: "Terbi", copy: "Poveli", placeholder: "Piši tu..." },
     pl: { title: "Slovo Tłumacz", from: "Z języka:", to: "Na język:", paste: "Wklej", clear: "Usuń", copy: "Kopiuj", placeholder: "Wpisz tekst..." },
@@ -71,7 +68,7 @@ const uiTranslations = {
     ru: { title: "Slovo Переводчик", from: "С языка:", to: "На язык:", paste: "Вставить", clear: "Очистить", copy: "Копировать", placeholder: "Введите текст..." },
     uk: { title: "Slovo Перекладач", from: "З мови:", to: "На мову:", paste: "Вставити", clear: "Очистити", copy: "Копіювати", placeholder: "Введіть текст..." },
     cs: { title: "Slovo Překladač", from: "Z jazyka:", to: "Do jazyka:", paste: "Vložit", clear: "Vymazat", copy: "Kopírovat", placeholder: "Zadejte text..." },
-    sk: { title: "Slovo Prekladač", from: "Z jazyka:", to: "Do jazyka:", paste: "Vložit", clear: "Vymazať", copy: "Kopírovat", placeholder: "Zadajte text..." },
+    sk: { title: "Slovo Prekladač", from: "Z jazyka:", to: "Do jazyka:", paste: "Vložiť", clear: "Vymazať", copy: "Kopírovat", placeholder: "Zadajte text..." },
     sl: { title: "Slovo Prevajalnik", from: "Iz:", to: "V:", paste: "Prilepi", clear: "Počisti", copy: "Kopiraj", placeholder: "Vnesi besedilo..." },
     hr: { title: "Slovo Prevoditelj", from: "Iz:", to: "U:", paste: "Zalijepi", clear: "Obriši", copy: "Kopiraj", placeholder: "Unesi tekst..." },
     sr: { title: "Slovo Преводилац", from: "Са језика:", to: "На језик:", paste: "Налепи", clear: "Обриши", copy: "Копирај", placeholder: "Унеси текст..." },
@@ -87,6 +84,7 @@ const uiTranslations = {
     ar: { title: "مترجم Slovo", from: "من:", to: "إلى:", paste: "لصق", clear: "مسح", copy: "نسخ", placeholder: "أدخل النص..." }
 };
 
+// --- POPRAWIONA FUNKCJA GENERUJĄCA LISTĘ JĘZYKÓW ---
 function populateLanguageLists(uiLang, userLocale) {
     const s1 = document.getElementById('srcLang'), s2 = document.getElementById('tgtLang');
     if (!s1 || !s2) return;
@@ -117,13 +115,13 @@ function populateLanguageLists(uiLang, userLocale) {
     });
 }
 
+// --- FUNKCJE WIELKOŚCI LITER ---
 function getCase(word) {
     if (!word) return "lower";
     if (word === word.toUpperCase() && word.length > 1) return "upper";
     if (word[0] === word[0].toUpperCase()) return "title";
     return "lower";
 }
-
 function applyCase(word, caseType) {
     if (!word) return "";
     switch (caseType) {
@@ -133,6 +131,7 @@ function applyCase(word, caseType) {
     }
 }
 
+// --- LOGIKA TŁUMACZENIA ---
 function dictReplace(text, dict) {
     if (!text) return "";
     const urlRegex = /(https?:\/\/[^\s]+|[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g;
@@ -155,67 +154,73 @@ function reorderSmart(text) {
     if (!text) return "";
     const tokens = text.split(/(\s+|[.,!?;:()=+\-%*/]+)/g).filter(t => t !== "" && t !== undefined);
     const result = [];
+
     for (let i = 0; i < tokens.length; i++) {
         let token = tokens[i];
         let lowToken = token.toLowerCase();
+
+        // Jeśli to nie jest słowo (tylko spacja lub interpunkcja), dodaj i idź dalej
         if (/^[\s.,!?;:()=+\-%*/]+$/.test(token)) {
             result.push(token);
             continue;
         }
+
+        // Sprawdzamy, czy obecne słowo to rzeczownik, przymiotnik lub liczebnik
         if (wordTypes[lowToken]) {
             let group = [];
             let currentIdx = i;
             let firstWordCase = getCase(tokens[i]);
+
+            // Zbieraj wszystkie powiązane słowa występujące po sobie (ignorując spacje)
             while (currentIdx < tokens.length) {
                 let currentToken = tokens[currentIdx];
                 let currentLow = currentToken.toLowerCase();
+
                 if (/^[\s]+$/.test(currentToken)) {
                     currentIdx++;
                     continue;
                 }
+
                 let type = wordTypes[currentLow];
                 if (type === "noun" || type === "adjective" || type === "numeral") {
                     group.push({ val: currentToken, type: type });
-                    i = currentIdx;
+                    i = currentIdx; // Przesuwamy główny licznik pętli
                     currentIdx++;
                 } else {
-                    break;
+                    break; 
                 }
             }
+
             if (group.length > 1) {
+                // Sortujemy grupę według klucza: 1. numeral, 2. adjective, 3. noun
                 const order = { "numeral": 1, "adjective": 2, "noun": 3 };
                 group.sort((a, b) => (order[a.type] || 99) - (order[b.type] || 99));
+
+                // Składamy grupę z powrotem w całość
                 group.forEach((word, index) => {
                     let formattedWord = word.val.toLowerCase();
+                    
+                    // Pierwsze słowo w nowym szyku dostaje wielkość liter pierwotnego pierwszego słowa
                     if (index === 0) {
                         formattedWord = applyCase(word.val, firstWordCase);
                     } else if (firstWordCase === "upper") {
                         formattedWord = word.val.toUpperCase();
                     }
+
                     result.push(formattedWord);
                     if (index < group.length - 1) result.push(" ");
                 });
                 continue;
             } else if (group.length === 1) {
+                // Jeśli grupa ma tylko 1 słowo, nic nie zmieniaj
                 result.push(token);
                 continue;
             }
         }
+
         result.push(token);
     }
     return result.join("");
-}
-
-// --- ZAWAANSOWANY PARSER ODMIAN ---
-function parseDeclension(plWord) {
-    const low = plWord.toLowerCase().trim();
-    if (declensionMap[low]) return declensionMap[low];
-    for (let base in declensionMap) {
-        if (low === base || low.startsWith(base) || base.startsWith(low)) {
-            return declensionMap[base];
-        }
-    }
-    return null;
 }
 
 async function translate() {
@@ -228,16 +233,11 @@ async function translate() {
     if (!text.trim()) { out.innerText = ""; return; }
     try {
         let finalResult = "";
-        if (src === 'pl' && tgt === 'slo') {
-            // Zaawansowane przetwarzanie z parserem odmian
-            let translated = text.replace(/[a-ząćęłńóśźżěьъ']+/gi, (word) => {
-                const declined = parseDeclension(word);
-                if (declined) return applyCase(declined, getCase(word));
-                return dictReplace(word, plToSlo);
-            });
-            finalResult = reorderSmart(translated);
-        } else if (src === 'slo' && tgt === 'pl') {
+        if (src === 'slo' && tgt === 'pl') {
             finalResult = dictReplace(text, sloToPl);
+        } else if (src === 'pl' && tgt === 'slo') {
+            let translated = dictReplace(text, plToSlo);
+            finalResult = reorderSmart(translated);
         } else if (src === 'slo') {
             const bridge = dictReplace(text, sloToPl);
             finalResult = await google(bridge, 'pl', tgt);
@@ -275,18 +275,11 @@ async function loadDictionaries() {
                         const slo = item.slovian.toLowerCase().trim();
                         plToSlo[pl] = item.slovian.trim();
                         sloToPl[slo] = item.polish.trim();
-
                         if (item["type and case"]) {
                             const info = item["type and case"].toLowerCase();
                             if (info.includes("jimenьnik") || info.includes("noun")) wordTypes[slo] = "noun";
                             if (info.includes("priloga") || info.includes("adjective")) wordTypes[slo] = "adjective";
                             if (info.includes("ličьnik") || info.includes("numeral")) wordTypes[slo] = "numeral";
-                        }
-
-                        // Zapisujemy formy odmian z vuzor.json
-                        if (item["type and case"] && item["type and case"].includes("jimenьnik")) {
-                            const basePl = item.polish.toLowerCase().trim().split(' ')[0];
-                            declensionMap[basePl] = item.slovian.trim();
                         }
                     }
                 });
@@ -294,25 +287,6 @@ async function loadDictionaries() {
         }
         if (status) status.innerText = "Engine Ready.";
     } catch (e) { if (status) status.innerText = "Dict Error."; }
-}
-
-// --- FUNKCJA SAMOUCZENIA ---
-function learnFromExamples() {
-    fetch('example_sentences.json')
-        .then(res => res.json())
-        .then(data => {
-            data.forEach(ex => {
-                if (ex.polish && ex.slovian) {
-                    const plWords = ex.polish.toLowerCase().split(/\s+/);
-                    const sloWords = ex.slovian.toLowerCase().split(/\s+/);
-                    plWords.forEach((p, i) => {
-                        if (sloWords[i] && !plToSlo[p]) plToSlo[p] = sloWords[i];
-                    });
-                }
-            });
-            console.log("Learning from examples completed.");
-        })
-        .catch(() => {});
 }
 
 // --- ZMODYFIKOWANA FUNKCJA INICJUJĄCA ---
@@ -341,7 +315,6 @@ async function init() {
         });
     }
     await loadDictionaries();
-    learnFromExamples();
     const userInput = document.getElementById('userInput');
     if (userInput) {
         userInput.addEventListener('input', debounce(translate, 300));
