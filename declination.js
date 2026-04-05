@@ -1,10 +1,10 @@
 // declination.js
-// FULL SENTENCE ENGINE v1
+// PROTO-SLAVIC DECLENSION ENGINE v3 (linguistic-grade)
 
 // =====================
-// GLOBAL STATE
+// GLOBAL
 // =====================
-let DECLENSIONS = {};
+let PATTERNS = {};
 let LEMMA_MAP = {};
 
 // =====================
@@ -19,57 +19,147 @@ async function initDeclination() {
     const vuzorData = await vuzorRes.json();
     const osnovaData = await osnovaRes.json();
 
-    DECLENSIONS = buildDeclensionMap(vuzorData);
+    PATTERNS = extractPatterns(vuzorData);
     LEMMA_MAP = buildLemmaMap(osnovaData);
 }
 
 // =====================
-// BUILDERS
+// LEMMA MAP
 // =====================
-function buildDeclensionMap(data) {
+function buildLemmaMap(data) {
     const map = {};
 
     data.forEach(entry => {
+        const pl = entry["polish"]?.toLowerCase();
+        const slo = entry["slovian"];
+
+        if (pl && slo) {
+            map[pl] = slo;
+        }
+    });
+
+    return map;
+}
+
+// =====================
+// DECLENSION CLASSES
+// =====================
+const ENDINGS = {
+    a_feminine: {
+        singular: {
+            nominative: "a",
+            accusative: "ǫ",
+            genitive: "y",
+            dative: "ě",
+            instrumental: "ojǫ",
+            locative: "ě",
+            vocative: "o"
+        },
+        plural: {
+            nominative: "y",
+            accusative: "y",
+            genitive: "",
+            dative: "am",
+            instrumental: "ami",
+            locative: "ah",
+            vocative: "y"
+        }
+    },
+
+    o_neuter: {
+        singular: {
+            nominative: "o",
+            accusative: "o",
+            genitive: "a",
+            dative: "u",
+            instrumental: "om",
+            locative: "ě",
+            vocative: "o"
+        },
+        plural: {
+            nominative: "a",
+            accusative: "a",
+            genitive: "",
+            dative: "am",
+            instrumental: "ami",
+            locative: "ah",
+            vocative: "a"
+        }
+    },
+
+    consonant_masculine: {
+        singular: {
+            nominative: "",
+            accusative: "",
+            genitive: "a",
+            dative: "u",
+            instrumental: "om",
+            locative: "ě",
+            vocative: "e"
+        },
+        plural: {
+            nominative: "y",
+            accusative: "y",
+            genitive: "ov",
+            dative: "am",
+            instrumental: "ami",
+            locative: "ah",
+            vocative: "y"
+        }
+    }
+};
+
+// =====================
+// PATTERN EXTRACTION (fallback)
+// =====================
+function extractPatterns(data) {
+    const patterns = {};
+
+    data.forEach(entry => {
         const typeCase = entry["type and case"];
-        const slovian = entry["slovian"];
+        const form = entry["slovian"];
 
         const lemmaMatch = typeCase.match(/"([^"]+)"/);
         if (!lemmaMatch) return;
 
         const lemma = lemmaMatch[1];
-        const grammaticalCase = detectCase(typeCase);
+
+        const caseName = detectCase(typeCase);
         const number = detectNumber(typeCase);
 
-        if (!map[lemma]) {
-            map[lemma] = {
-                singular: {},
-                plural: {}
-            };
+        const type = getDeclensionType(lemma);
+        const stem = getStem(lemma);
+
+        const ending = form.replace(stem, "");
+
+        if (!patterns[type]) {
+            patterns[type] = { singular: {}, plural: {} };
         }
 
-        map[lemma][number][grammaticalCase] = slovian;
+        patterns[type][number][caseName] = ending;
     });
 
-    return map;
-}
-
-function buildLemmaMap(data) {
-    const map = {};
-
-    data.forEach(entry => {
-        const polish = entry["polish"]?.toLowerCase();
-        const slovian = entry["slovian"];
-
-        if (polish && slovian) {
-            map[polish] = slovian;
-        }
-    });
-
-    return map;
+    return patterns;
 }
 
 // =====================
-// DETECTORS
+// TYPE DETECTION
+// =====================
+function getDeclensionType(word) {
+    if (word.endsWith("a")) return "a_feminine";
+    if (word.endsWith("o")) return "o_neuter";
+    return "consonant_masculine";
+}
+
+function getStem(word) {
+    if (word.endsWith("a") || word.endsWith("o")) {
+        return word.slice(0, -1);
+    }
+    return word;
+}
+
+// =====================
+// DETECT CASE / NUMBER
 // =====================
 function detectCase(str) {
     if (str.includes("nominative")) return "nominative";
@@ -88,26 +178,56 @@ function detectNumber(str) {
 }
 
 // =====================
-// NLP CORE
+// PHONOLOGY
 // =====================
+function applyPhonology(stem, ending) {
+    let word = stem + ending;
 
-// liczba mnoga
-function detectPlural(word) {
-    return word.endsWith("y") || word.endsWith("i") || word.endsWith("e");
+    // k → c przed i/ě
+    word = word.replace(/k([iě])/g, "c$1");
+
+    // g → z przed i/ě
+    word = word.replace(/g([iě])/g, "z$1");
+
+    // h → s przed i/ě
+    word = word.replace(/h([iě])/g, "s$1");
+
+    return word;
 }
 
-// przypadek (ulepszony)
+// =====================
+// INFLECTION ENGINE
+// =====================
+function inflect(lemma, grammaticalCase, number = "singular") {
+    const type = getDeclensionType(lemma);
+    const stem = getStem(lemma);
+
+    // 1. reguły gramatyczne
+    const endings = ENDINGS[type];
+    let ending = endings?.[number]?.[grammaticalCase];
+
+    // 2. fallback do vuzor (jeśli istnieje)
+    if (!ending && PATTERNS[type]) {
+        ending = PATTERNS[type][number][grammaticalCase];
+    }
+
+    if (ending === undefined) return lemma;
+
+    return applyPhonology(stem, ending);
+}
+
+// =====================
+// NLP (PL → CASE)
+// =====================
 function detectPolishCase(word, prevWord = "") {
     word = word.toLowerCase();
     prevWord = prevWord.toLowerCase();
 
-    // PREPOZYCJE
     if (["do", "od", "bez"].includes(prevWord)) return "genitive";
     if (["dla", "ku"].includes(prevWord)) return "dative";
     if (["z", "ze"].includes(prevWord)) return "instrumental";
     if (["o", "na", "w"].includes(prevWord)) return "locative";
 
-    // KOŃCÓWKI
     if (word.endsWith("ę")) return "accusative";
     if (word.endsWith("ą")) return "instrumental";
     if (word.endsWith("om")) return "dative";
@@ -117,35 +237,18 @@ function detectPolishCase(word, prevWord = "") {
     return "nominative";
 }
 
-// bardzo prosty POS
-function detectPOS(word) {
-    if (LEMMA_MAP[word.toLowerCase()]) return "noun";
-    if (word.endsWith("ć")) return "verb";
-    return "unknown";
+function detectPlural(word) {
+    return word.endsWith("y") || word.endsWith("i") || word.endsWith("e");
 }
 
 // =====================
-// INFLECTION
+// TRANSLATION
 // =====================
-function inflect(lemma, grammaticalCase, number) {
-    const entry = DECLENSIONS[lemma];
-    if (!entry) return lemma;
-
-    return (
-        entry[number][grammaticalCase] ||
-        entry[number]["nominative"] ||
-        lemma
-    );
-}
-
-// =====================
-// WORD TRANSLATION
-// =====================
-function translateWord(word, prevWord = "") {
-    const clean = word.toLowerCase();
+function translateWord(plWord, prevWord = "") {
+    const clean = plWord.toLowerCase();
 
     const lemma = LEMMA_MAP[clean];
-    if (!lemma) return word;
+    if (!lemma) return plWord;
 
     const grammaticalCase = detectPolishCase(clean, prevWord);
     const number = detectPlural(clean) ? "plural" : "singular";
@@ -153,39 +256,27 @@ function translateWord(word, prevWord = "") {
     return inflect(lemma, grammaticalCase, number);
 }
 
-// =====================
-// SENTENCE ENGINE
-// =====================
 function translateSentence(sentence) {
     const tokens = sentence.split(/\s+/);
 
-    return tokens.map((word, index) => {
-        const prev = index > 0 ? tokens[index - 1] : "";
+    return tokens.map((word, i) => {
+        const prev = i > 0 ? tokens[i - 1] : "";
         return translateWord(word, prev);
     }).join(" ");
 }
 
 // =====================
-// ADVANCED (STRUCTURE)
-// =====================
-function analyzeSentence(sentence) {
-    const tokens = sentence.split(/\s+/);
-
-    return tokens.map((word, i) => {
-        return {
-            word,
-            pos: detectPOS(word),
-            case: detectPolishCase(word, tokens[i - 1] || ""),
-            number: detectPlural(word) ? "plural" : "singular"
-        };
-    });
-}
-
-// =====================
 // DEBUG
 // =====================
-function debugDeclension(lemma) {
-    return DECLENSIONS[lemma] || null;
+function debugWord(lemma) {
+    return {
+        nom: inflect(lemma, "nominative"),
+        acc: inflect(lemma, "accusative"),
+        gen: inflect(lemma, "genitive"),
+        dat: inflect(lemma, "dative"),
+        ins: inflect(lemma, "instrumental"),
+        loc: inflect(lemma, "locative")
+    };
 }
 
 // =====================
@@ -193,8 +284,8 @@ function debugDeclension(lemma) {
 // =====================
 export {
     initDeclination,
-    translateSentence,
+    inflect,
     translateWord,
-    analyzeSentence,
-    debugDeclension
+    translateSentence,
+    debugWord
 };
