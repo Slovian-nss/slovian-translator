@@ -17,17 +17,10 @@ class SlovianDecliner:
         p = polish.lower()
         num = "munoga ličьba" if number == "plural" else "poedinьna ličьba"
 
-        # 1. Dokładna forma z JSON
+        # 1. Dokładna forma z vuzor.json
         if word_type == "noun":
             g = gender or ("feminine (inanimate)" if p.endswith('a') else "masculine (inanimate)")
             key = f"noun - jimenьnik: \"{polish}\" | {case_name} | {num} | type {g}"
-            if (p, key) in self.lookup:
-                return self.lookup[(p, key)]
-
-        elif word_type == "adjective":
-            g = gender or "masculine"
-            gs = "mǫžьsky" if g == "masculine" else "ženьsky" if g == "feminine" else "nijaky"
-            key = f"adjective - pridavьnik: \"{polish}\" | {case_name} | {num} | type {g} - rod'ajь {gs}"
             if (p, key) in self.lookup:
                 return self.lookup[(p, key)]
 
@@ -36,7 +29,7 @@ class SlovianDecliner:
             if w == p and case_name in c and num in c:
                 return s
 
-        # 3. Pełne reguły fallback dla wszystkich typów
+        # 3. Reguły fallback dla wszystkich typów (nawet gdy nie ma w JSON)
 
         if word_type == "noun":
             if number == "singular":
@@ -46,7 +39,7 @@ class SlovianDecliner:
                 elif case_name == "orǫdьnik":    # instrumental
                     if p.endswith('a'): return p[:-1] + "ojǫ"
                     else: return p + "omь"
-                elif case_name == "vinьnik":     # accusative (nieożywione = nom)
+                elif case_name == "vinьnik":     # accusative
                     return polish
                 elif case_name == "rodilьnik":   # genitive
                     if p.endswith('a'): return p[:-1] + "y"
@@ -57,9 +50,6 @@ class SlovianDecliner:
                 elif case_name == "zovanьnik":   # vocative
                     if p.endswith('a'): return p[:-1] + "o"
                     else: return p + "e"
-                elif case_name == "jimenovьnik":
-                    return polish
-
             else:  # plural
                 if case_name in ("jimenovьnik", "vinьnik", "zovanьnik"):
                     if p.endswith('a'): return p[:-1] + "i"
@@ -78,14 +68,14 @@ class SlovianDecliner:
             if number == "singular":
                 if gender == "feminine":
                     if case_name == "vinьnik": return base + "ǫ"
-                    if case_name in ("městьnik", "měrьnik", "rodilьnik"): return base + "eji"
+                    if case_name in ("rodilьnik", "městьnik", "měrьnik"): return base + "eji"
                     if case_name == "orǫdьnik": return base + "ejǫ"
                     return base + "a"
-                else:  # masculine/neuter
+                else:  # masculine / neuter
                     if case_name == "rodilьnik": return base + "ogo"
                     if case_name == "měrьnik": return base + "omu"
                     if case_name in ("městьnik", "orǫdьnik"): return base + "ymь"
-                    return base + "y" if case_name == "vinьnik" else base
+                    return base
             else:  # plural
                 if case_name in ("rodilьnik", "městьnik"): return base + "yh"
                 if case_name == "měrьnik": return base + "ymь"
@@ -94,5 +84,11 @@ class SlovianDecliner:
 
         return f"[{polish} - brak formy]"
 
-# ===================== UŻYCIE =====================
+# ===================== UŻYCIE W TŁUMACZU =====================
 decliner = SlovianDecliner()
+
+# Przykłady (testuj w aplikacji)
+print(decliner.decline("ogród", "městьnik"))                    # → obgordě
+print(decliner.decline("obietnica", "vinьnik"))                 # → obětьnicǫ
+print(decliner.decline("równy", "vinьnik", "singular", "adjective", "feminine"))  # → orvьnǫ
+print(decliner.decline("gord", "orǫdьnik", "plural"))           # → gordy
