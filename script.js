@@ -89,6 +89,7 @@ const uiTranslations = {
 // --- LOCAL STORAGE + DOMYŚLNY JĘZYK INTERFEJSU I TŁUMACZENIA ---
 const STORAGE_KEYS = {
     uiLang: "uiLang",
+    uiLangManual: "uiLangManual",
     srcLang: "srcLang",
     tgtLang: "tgtLang"
 };
@@ -165,6 +166,12 @@ function getStoredLanguage(key) {
 }
 
 function getStoredUILanguage() {
+    // Interfejs ma się sam dopasowywać do języka przeglądarki/urządzenia.
+    // Stary localStorage.uiLang mógł trzymać np. "pl" z wcześniejszych testów,
+    // więc używamy go tylko wtedy, gdy język interfejsu został jawnie ustawiony.
+    const manual = safeLocalGet(STORAGE_KEYS.uiLangManual);
+    if (manual !== "1") return null;
+
     const value = safeLocalGet(STORAGE_KEYS.uiLang);
     if (value && isSupportedUILanguage(value)) return value;
     return null;
@@ -173,7 +180,9 @@ function getStoredUILanguage() {
 function detectDefaultUILanguage() {
     const stored = getStoredUILanguage();
     if (stored) return stored;
-    return findSupportedFromLocales(getBrowserLocales(), Object.keys(uiTranslations), "en");
+
+    const detected = findSupportedFromLocales(getBrowserLocales(), Object.keys(uiTranslations), "en");
+    return detected || "en";
 }
 
 function detectDefaultSourceLanguage() {
@@ -199,7 +208,10 @@ function getDisplayLocale(uiLang) {
     }
 
     if (uiLang === "sr-Latn") return "sr-Latn";
-    return locales[0] || uiLang || "en";
+
+    // Intl.DisplayNames powinien dostać język interfejsu, nie zawsze pierwszy język systemu.
+    // Dzięki temu niemiecki interfejs pokazuje Deutsch/Polnisch/Slawisch, a nie polskie nazwy.
+    return uiLang || locales[0] || "en";
 }
 
 function normalizeSelectPair(src, tgt) {
@@ -293,6 +305,7 @@ function setInterfaceLanguage(lang) {
     if (!isSupportedUILanguage(lang)) return;
 
     safeLocalSet(STORAGE_KEYS.uiLang, lang);
+    safeLocalSet(STORAGE_KEYS.uiLangManual, "1");
 
     const displayLocale = getDisplayLocale(lang);
     const src = document.getElementById('srcLang');
@@ -919,5 +932,22 @@ function debounce(func, wait) {
 window.prepareInputForTranslation = prepareInputForTranslation;
 window.hideCorrectionSuggestion = hideCorrectionSuggestion;
 window.googleRaw = googleRaw;
+function resetInterfaceLanguageAuto() {
+    safeLocalSet(STORAGE_KEYS.uiLangManual, "0");
+    const lang = detectDefaultUILanguage();
+    const displayLocale = getDisplayLocale(lang);
+    const src = document.getElementById('srcLang');
+    const tgt = document.getElementById('tgtLang');
+    const currentSrc = src ? src.value : null;
+    const currentTgt = tgt ? tgt.value : null;
+
+    applyUI(lang);
+    populateLanguageLists(lang, displayLocale);
+
+    if (src && currentSrc && isSupportedLanguageCode(currentSrc)) src.value = currentSrc;
+    if (tgt && currentTgt && isSupportedLanguageCode(currentTgt)) tgt.value = currentTgt;
+}
+
 window.setInterfaceLanguage = setInterfaceLanguage;
+window.resetInterfaceLanguageAuto = resetInterfaceLanguageAuto;
 window.onload = init;

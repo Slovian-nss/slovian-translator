@@ -587,6 +587,21 @@
         if (w.endsWith("om")) add(w.slice(0, -2) + "o");
         if (w.endsWith("ami")) add(w.slice(0, -3) + "o");
 
+        // Przymiotniki i zaimki przymiotne: pięknych -> piękny, dużych -> duży,
+        // moich -> mój/moje; pozwala potem użyć wzorców z vuzor/osnova.
+        if (w.endsWith("ych")) { add(w.slice(0, -3) + "y"); add(w.slice(0, -3) + "i"); }
+        if (w.endsWith("ich")) { add(w.slice(0, -3) + "i"); add(w.slice(0, -3) + "y"); }
+        if (w.endsWith("ymi")) { add(w.slice(0, -3) + "y"); add(w.slice(0, -3) + "i"); }
+        if (w.endsWith("imi")) { add(w.slice(0, -3) + "i"); add(w.slice(0, -3) + "y"); }
+        if (w.endsWith("ego")) { add(w.slice(0, -3) + "y"); add(w.slice(0, -3) + "i"); }
+        if (w.endsWith("emu")) { add(w.slice(0, -3) + "y"); add(w.slice(0, -3) + "i"); }
+        if (w.endsWith("ym")) { add(w.slice(0, -2) + "y"); add(w.slice(0, -2) + "i"); }
+        if (w.endsWith("im")) { add(w.slice(0, -2) + "i"); add(w.slice(0, -2) + "y"); }
+        if (w.endsWith("ej")) { add(w.slice(0, -2) + "a"); add(w.slice(0, -2) + "y"); }
+        if (w.endsWith("ą")) { add(w.slice(0, -1) + "a"); add(w.slice(0, -1) + "y"); }
+        if (w.endsWith("e")) { add(w.slice(0, -1) + "y"); add(w.slice(0, -1) + "i"); }
+        if (w.endsWith("a")) { add(w.slice(0, -1) + "y"); }
+
         return out;
     }
 
@@ -638,7 +653,7 @@
         BRIDGE.pl2slo.forEach(function (list) {
             for (const c of list || []) {
                 const m = c && c.meta;
-                if (!m || m.wordClass !== "noun" || !m.lemma) continue;
+                if (!m || !(m.wordClass in ORDER) || !m.lemma) continue;
                 if (m.grammaticalCase === "nominative" && m.number === "singular") {
                     if (!baseByLemma.has(m.lemma)) baseByLemma.set(m.lemma, c);
                 }
@@ -648,7 +663,7 @@
         BRIDGE.pl2slo.forEach(function (list) {
             for (const c of list || []) {
                 const m = c && c.meta;
-                if (!m || m.wordClass !== "noun" || !m.lemma || !m.grammaticalCase) continue;
+                if (!m || !(m.wordClass in ORDER) || !m.lemma || !m.grammaticalCase) continue;
                 const base = baseByLemma.get(m.lemma);
                 if (!base || !base.target || !c.target) continue;
                 if (base.target === c.target && m.grammaticalCase === "nominative" && m.number === "singular") continue;
@@ -671,7 +686,7 @@
     function guessSlovianByDynamicPattern(baseCandidate, wantedCase, wantedNumber) {
         if (!baseCandidate || !baseCandidate.target || !wantedCase) return null;
         const meta = baseCandidate.meta || {};
-        if (meta.wordClass !== "noun") return null;
+        if (!(meta.wordClass in ORDER)) return null;
 
         const number = wantedNumber || meta.number || "singular";
         const keys = [
@@ -749,7 +764,7 @@
             if (!list || !list.length) continue;
 
             const base = chooseCandidate(list, lemmaWord, tokens || [], index || 0, direction);
-            if (!base || !base.target || !base.meta || base.meta.wordClass !== "noun") continue;
+            if (!base || !base.target || !base.meta || !(base.meta.wordClass in ORDER)) continue;
 
             const wantedN = wantedNumber || base.meta.number || "singular";
             const fromLemma = lookupLemmaForm(base, wantedCase, wantedN, direction);
