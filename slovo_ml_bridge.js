@@ -1,6 +1,6 @@
 /* slovo_ml_bridge.js
  * Warstwa ML + odmiana kontekstowa + interpunkcja do starego script.js.
- * v5: szybka korekta wejścia + odmiana + bez zawieszania po wklejeniu.
+ * v6: korekta + odmiana + poprawne rozpoznawanie pridavьnik i szyk grup.
  *
  * Ładuj w index.html dokładnie w tej kolejności:
  * <script src="slovo_model.js"></script>
@@ -563,10 +563,10 @@
         if (lemmaMatch && lemmaMatch[1]) meta.lemma = normalizeKey(lemmaMatch[1]);
 
         if (info.includes("phrase") || info.includes("rěčen")) meta.isPhrase = true;
-        if (info.includes("noun") || info.includes("jimenьnik")) meta.wordClass = "noun";
-        if (info.includes("adjective") || info.includes("priloga")) meta.wordClass = "adjective";
-        if (info.includes("numeral") || info.includes("ličьnik")) meta.wordClass = "numeral";
-        if (info.includes("verb") || info.includes("glagol")) meta.wordClass = "verb";
+        if (info.includes("noun") || info.includes("jimenьnik") || info.includes("imenьnik") || info.includes("rzeczownik")) meta.wordClass = "noun";
+        if (info.includes("adjective") || info.includes("priloga") || info.includes("pridavьnik") || info.includes("pridavnik") || info.includes("przymiotnik")) meta.wordClass = "adjective";
+        if (info.includes("numeral") || info.includes("ličьnik") || info.includes("liczebnik")) meta.wordClass = "numeral";
+        if (info.includes("verb") || info.includes("glagol") || info.includes("golgol") || info.includes("czasownik")) meta.wordClass = "verb";
         if (meta.isPhrase) meta.wordClass = "phrase";
 
         if (info.includes("nominative") || info.includes("jimenovьnik")) meta.grammaticalCase = "nominative";
@@ -1127,6 +1127,13 @@
             for (const cand of candidates) {
                 const type = cand && cand.meta && cand.meta.wordClass;
                 if (type === "noun" || type === "adjective" || type === "numeral") return type;
+
+                // Awaryjne rozpoznanie bezpośrednio po type and case,
+                // gdy stary wpis nie został poprawnie sparsowany.
+                const raw = normalizeKey((cand && cand.typeCase) || "");
+                if (raw.includes("jimenьnik") || raw.includes("noun") || raw.includes("rzeczownik")) return "noun";
+                if (raw.includes("pridavьnik") || raw.includes("pridavnik") || raw.includes("adjective") || raw.includes("priloga") || raw.includes("przymiotnik")) return "adjective";
+                if (raw.includes("ličьnik") || raw.includes("numeral") || raw.includes("liczebnik")) return "numeral";
             }
         }
 

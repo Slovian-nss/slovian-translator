@@ -597,9 +597,9 @@ async function loadDictionaries() {
                         sloToPl[slo] = item.polish.trim();
                         if (item["type and case"]) {
                             const info = item["type and case"].toLowerCase();
-                            if (info.includes("jimenьnik") || info.includes("noun")) wordTypes[slo] = "noun";
-                            if (info.includes("priloga") || info.includes("adjective")) wordTypes[slo] = "adjective";
-                            if (info.includes("ličьnik") || info.includes("numeral")) wordTypes[slo] = "numeral";
+                            if (info.includes("jimenьnik") || info.includes("imenьnik") || info.includes("noun") || info.includes("rzeczownik")) wordTypes[slo] = "noun";
+                            if (info.includes("priloga") || info.includes("pridavьnik") || info.includes("pridavnik") || info.includes("adjective") || info.includes("przymiotnik")) wordTypes[slo] = "adjective";
+                            if (info.includes("ličьnik") || info.includes("numeral") || info.includes("liczebnik")) wordTypes[slo] = "numeral";
                         }
                     }
                 });
