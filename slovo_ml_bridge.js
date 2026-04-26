@@ -42,8 +42,9 @@
     const TRUST_MODEL_SINGLE_WORD = false;
 
     /*
-     * Stare reorderSmart potrafi pomóc przy grupach przymiotnik + rzeczownik,
-     * ale przy frazach bywa zbyt agresywne. Domyślnie wyłączone.
+     * Stare reorderSmart zostaje jako opcja awaryjna, ale niżej jest własna
+     * funkcja reorderSlovianAdjacentGroups(), która układa obok siebie:
+     * liczebnik → przymiotnik → rzeczownik.
      */
     const USE_REORDER_SMART = false;
 
@@ -1117,18 +1118,117 @@
         return best;
     }
 
-    function maybeReorderSlovian(text) {
-        if (!USE_REORDER_SMART) return text;
+    function getSlovianWordType(token) {
+        const key = normalizeKey(token);
+        if (!key) return "";
 
-        if (typeof reorderSmart === "function") {
-            try {
-                return reorderSmart(text);
-            } catch (e) {
-                return text;
+        const candidates = BRIDGE.slo2pl.get(key);
+        if (candidates && candidates.length) {
+            for (const cand of candidates) {
+                const type = cand && cand.meta && cand.meta.wordClass;
+                if (type === "noun" || type === "adjective" || type === "numeral") return type;
             }
         }
 
-        return text;
+        try {
+            if (typeof wordTypes !== "undefined" && wordTypes[key]) return wordTypes[key];
+        } catch (e) {}
+
+        return "";
+    }
+
+    function reorderSlovianAdjacentGroups(text) {
+        const original = String(text ?? "");
+        if (!original.trim()) return original;
+
+        const protectedText = protectSpecialText(original);
+        const tokens = protectedText.text.match(TOKEN_RE) || [protectedText.text];
+        const out = [];
+        const order = { numeral: 1, adjective: 2, noun: 3 };
+
+        for (let i = 0; i < tokens.length; i++) {
+            const token = tokens[i];
+            const type = isWord(token) ? getSlovianWordType(token) : "";
+
+            if (!(type === "noun" || type === "adjective" || type === "numeral")) {
+                out.push(token);
+                continue;
+            }
+
+            const group = [];
+            let j = i;
+
+            while (j < tokens.length) {
+                if (isWord(tokens[j])) {
+                    const t = getSlovianWordType(tokens[j]);
+                    if (t === "noun" || t === "adjective" || t === "numeral") {
+                        group.push({ val: tokens[j], type: t, originalIndex: group.length });
+                        j++;
+                        continue;
+                    }
+                    break;
+                }
+
+                if (isSpace(tokens[j])) {
+                    let k = j + 1;
+                    while (k < tokens.length && isSpace(tokens[k])) k++;
+                    if (k < tokens.length && isWord(tokens[k])) {
+                        const nt = getSlovianWordType(tokens[k]);
+                        if (nt === "noun" || nt === "adjective" || nt === "numeral") {
+                            j = k;
+                            continue;
+                        }
+                    }
+                    break;
+                }
+
+                break;
+            }
+
+            const hasNoun = group.some(g => g.type === "noun");
+            const hasModifier = group.some(g => g.type === "adjective" || g.type === "numeral");
+
+            if (group.length > 1 && hasNoun && hasModifier) {
+                const firstCase = getCaseType(group[0].val);
+                const sorted = group.slice().sort(function (a, b) {
+                    const byType = (order[a.type] || 99) - (order[b.type] || 99);
+                    if (byType !== 0) return byType;
+                    return a.originalIndex - b.originalIndex;
+                });
+
+                const words = sorted.map(function (item, index) {
+                    let word = item.val;
+                    if (index === 0) {
+                        word = applyCaseLike(group[0].val, word);
+                    } else if (firstCase === "upper") {
+                        word = word.toLocaleUpperCase("pl");
+                    } else if (firstCase === "title") {
+                        word = word.toLocaleLowerCase("pl");
+                    }
+                    return word;
+                });
+
+                out.push(words.join(" "));
+                i = j - 1;
+                continue;
+            }
+
+            out.push(token);
+        }
+
+        return protectedText.restore(out.join(""));
+    }
+
+    function maybeReorderSlovian(text) {
+        let result = reorderSlovianAdjacentGroups(text);
+
+        if (USE_REORDER_SMART && typeof reorderSmart === "function") {
+            try {
+                result = reorderSmart(result);
+            } catch (e) {}
+        }
+
+        return result;
     }
 
     function fixOutputSpacing(text) {
@@ -1136,8 +1236,8 @@
             .replace(/\s+([,.;:!?%])/g, "$1")
             .replace(/([([{„«])\s+/g, "$1")
             .replace(/\s+([)\]}”»])/g, "$1")
-            .replace(/\s+—\s+/g, " — ")
-            .replace(/\s+-\s+/g, " - ")
+            .replace(/\s*—\s*/g, " — ")
+            .replace(/([\p{L}\p{M}0-9ьъěęǫšžčćńłóśźż])\s*-\s*([\p{L}\p{M}0-9ьъěęǫšžčćńłóśźż])/gu, "$1 - $2")
             .replace(/\s+/g, " ")
             .trim();
     }

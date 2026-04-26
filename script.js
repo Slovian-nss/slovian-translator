@@ -201,7 +201,18 @@ function reorderSmart(text) {
 
         result.push(token);
     }
-    return result.join("");
+    return fixDisplaySpacing(result.join(""));
+}
+
+function fixDisplaySpacing(text) {
+    return String(text ?? "")
+        .replace(/\s+([,.;:!?%])/g, "$1")
+        .replace(/([([{„«])\s+/g, "$1")
+        .replace(/\s+([)\]}”»])/g, "$1")
+        .replace(/\s*—\s*/g, " — ")
+        .replace(/([\p{L}\p{M}0-9ьъěęǫšžčćńłóśźż])\s*-\s*([\p{L}\p{M}0-9ьъěęǫšžčćńłóśźż])/gu, "$1 - $2")
+        .replace(/\s+/g, " ")
+        .trim();
 }
 
 // --- GOOGLE + KOREKTA WEJŚCIA ---
@@ -556,7 +567,7 @@ async function translate() {
             finalResult = await google(text, src, tgt);
         }
 
-        out.innerText = finalResult;
+        out.innerText = fixDisplaySpacing(finalResult);
     } catch (e) {
         console.error(e);
         out.innerText = "Error...";
