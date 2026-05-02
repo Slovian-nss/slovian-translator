@@ -10,8 +10,8 @@
     "slovian": "Jaka estь cěna hlěba?"
   },
   {
-    "context": "How much does this bread cost?",
-    "polish": "Ile kosztuje ten chleb?",
+    "context": "How much does bread cost?",
+    "polish": "Ile kosztuje chleb?",
     "slovian": "Jaka estь cěna hlěba?"
   },
   {
@@ -35,13 +35,13 @@
     "slovian": "Jako moldežь sama ob sebě myslitь, ji že oni sǫtь Ukrajinьci, to ukrajinьsko (propaganda) pьranьje mozga juže pobědilo, a cělo načelьstvo ukrajinьskoji diržavy i vu Pol'iscě tako že estь vod'eno perz Židy. Oni sǫtь vu vьśeh uręděh i vu Pol'ьskomь Vojiscě to že jih viděl esmь na volstьne oči. Bo jih rodime jimena sǫtь nemьčьske, aramejьske, grečьske i velьmi rěduko hebrajьske, ale oni to že jimějǫtь take same jako Slověne rodime jimena i perz to trudьno jih otorzьniti ot nas. Vьśegoda terba pamętati: koto l'ubitь napuščati, juditi do vojiny edьnyh Slověny na drugyh Slověny, tako samo jako bylo vu Južьnoji Slověnьščině - vu Jugoslaviji, tamo l'udьje juže zabyli čimь estь slověnьstvo, a vod'ь Tito vu grobě sę provort'ajetь."
   },
   {
-    "context": "Those who live by the sword die by the sword.",
+    "context": "Who fights with the sword will perish by the sword.",
     "polish": "Kto mieczem wojuje, ten od miecza zginie.",
-    "slovian": "Koto mečemь bojujetь, toji ot meča jizgynetь."
+    "slovian": "Koto mečemь vojujetь, toji ot meča jizgynetь."
   },
   {
     "context": "Take food from them.",
     "polish": "Bierz jedzenie od nich.",
-    "slovian": "Beri jedenьje ot njih."
+    "slovian": "Beri ědenьje ot njih."
   }
 ]
